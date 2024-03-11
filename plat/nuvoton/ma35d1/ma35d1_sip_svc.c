@@ -88,7 +88,7 @@ static int32_t ma35d1_set_cpu_clock(int cpu_freq)
 		break;
 	case CPU_PLL_250:
 		index = 5;
-		INFO("CA-PLL is 500 MHz\n");
+		INFO("CA-PLL is 250 MHz\n");
 		break;
 	case CPU_PLL_125:
 		index = 6;
