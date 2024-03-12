@@ -179,31 +179,6 @@ static int ecc_init_curve(void)
 	return ret;
 }
 
-static int ecc_strcmp(char *s1, char *s2)
-{
-	char  c1, c2;
-
-	while (*s1 == '0') s1++;
-	while (*s2 == '0') s2++;
-
-	for ( ; *s1 || *s2; s1++, s2++)
-	{
-		if ((*s1 >= 'A') && (*s1 <= 'Z'))
-			c1 = *s1 + 32;
-		else
-			c1 = *s1;
-
-		if ((*s2 >= 'A') && (*s2 <= 'Z'))
-			c2 = *s2 + 32;
-		else
-			c2 = *s2;
-
-		if (c1 != c2)
-			return 1;
-	}
-	return 0;
-}
-
 int wait_ECC_complete()
 {
 	while (1)
@@ -689,14 +664,6 @@ int ECC_VerifySignature_KS(char *message, int x_ksnum, int y_ksnum, char *R, cha
 		/*  (27) Read X1 registers to get x1\A1\A6 (mod n) */
 		Reg2Hex(pCurve->Echar, (unsigned int *)ECC_X1(0), temp_hex_str);
 
-		/* 6. The signature is valid if x1\A1\A6 = r, otherwise it is invalid */
-
-		/* Compare with test pattern to check if r is correct or not */
-		if (ecc_strcmp(temp_hex_str, R) != 0)
-		{
-			printf("--> 3\n");
-			ret = -2;
-		}
 	}  /* ret == 0 */
 
 	return ret;

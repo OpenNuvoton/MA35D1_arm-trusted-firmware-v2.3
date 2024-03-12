@@ -37,26 +37,31 @@ int ma35d0_fip_verify(uintptr_t base, size_t size) {
 		return 0;
 
 	image_info = (IMAGE_INFO_T *)image;
+
 	memcpy(image,(unsigned char *)base+size - sizeof(IMAGE_INFO_T), sizeof(IMAGE_INFO_T));
 
-	/* initial crypto engine and ks clock */
 	mmio_write_32((TSI_CLK_BASE+0x04), (mmio_read_32(TSI_CLK_BASE+0x04) | 0x5000));
 
-	/* Init KeyStore */
-	/* KS INIT(KS_CTL[8]) + START(KS_CTL[0]) */
 	mmio_write_32(KS_BASE+0x00, 0x101);
-	while ((mmio_read_32(KS_BASE+0x08) & 0x80) == 0)
-		;	/* wait for INITDONE(KS_STS[7]) set */
-	while (mmio_read_32(KS_BASE+0x08) & 0x4)
-		;	   /* wait for BUSY(KS_STS[2]) cleared */
 
-	/* enable SHA, AES, and ECC */
-	/* SHA mode 256, in/out swap, key len 0 */
+	while ((mmio_read_32(KS_BASE+0x08) & 0x80) == 0);
+
+	while (mmio_read_32(KS_BASE+0x08) & 0x4);
+
 	SHA_Open(SHA_MODE_SHA256, SHA_IN_OUT_SWAP, 0);
 
-	/* calculate SHA-256 HASH */
 	SHA_SetDMATransfer(base, size-sizeof(IMAGE_INFO_T));
+
 	SHA_Start(CRYPTO_DMA_ONE_SHOT);
+
+	while (1)
+	{
+		if (mmio_read_32(INTSTS) & ((1<<24)|(1<<25)) )
+		{
+			mmio_write_32(INTSTS,((1<<24)|(1<<25)));
+			break;
+		}
+	}
 
 	SHA_Read(shaDigest);
 	for (j=7, k=0; j>=0; j--, k++)
@@ -74,6 +79,7 @@ int ma35d0_fip_verify(uintptr_t base, size_t size) {
 	Reg2Hex(64, tmpbuf, (param+256));
 
 	inv_dcache_range(base, size);
+
 	if (ECC_VerifySignature_KS(param, 0x86, 0x87, (param+128), (param+256)) < 0)
 		return 1;
 
@@ -81,37 +87,27 @@ int ma35d0_fip_verify(uintptr_t base, size_t size) {
 }
 
 int ma35d0_fip_deaes(uintptr_t base, size_t size) {
-	int sid, j;
-	volatile unsigned char *param = (volatile unsigned char *)TSI_PARAM_BASE;
-
 	if (size <= 0)
 		return 0;
 
-	/* AES, channel 0, AES decode, CFB mode, key 256, in/out swap */
 	mmio_write_32(AES_IV(0), 0);
 	mmio_write_32(AES_IV(1), 0);
 	mmio_write_32(AES_IV(2), 0);
 	mmio_write_32(AES_IV(3), 0);
 
-	/* AES decrypt */
 	mmio_write_32(AES_SADDR, base);
 	mmio_write_32(AES_DADDR, base);
-	mmio_write_32(AES_CNT, base);
+	mmio_write_32(AES_CNT, (size-sizeof(IMAGE_INFO_T)));
 
-	/* 0x2<<KSCTL_RSSRC_Pos | KSCTL_RSRC_Msk | 8 */
 	mmio_write_32(AES_KSCTL, (0x2<<6) | (0x1<<5) | 8);	/* from KS_OTP */
 
-	/* ((AES_MODE_CFB << CRPT_AES_CTL_OPMODE_Pos) |
-	   (AES_KEY_SIZE_256 << CRPT_AES_CTL_KEYSZ_Pos)) |
-	   CRPT_AES_CTL_INSWAP_Msk | CRPT_AES_CTL_OUTSWAP_Msk |
-	   CRPT_AES_CTL_DMAEN_Msk | CRPT_AES_CTL_DMALAST_Msk | CRPT_AES_CTL_START_Msk */
 	mmio_write_32(AES_CTL, ((2<<8) | (2<<2)) | (1<<23) | (1<<22) | (1<<7) | (1<<5) | (1<<0));
 	while (1)
 	{
-		/* CRPT_INTSTS_AESIF_Msk|CRPT_INTSTS_AESEIF_Msk */
 		if(mmio_read_32(INTSTS) & ((1<<0)|(1<<1)) )
 		{
 			mmio_write_32(INTSTS,((1<<0)|(1<<1)));
+			break;
 		}
 	}
 	inv_dcache_range(base, size);
