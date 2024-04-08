@@ -62,7 +62,7 @@ uintptr_t ma35d1_plat_sip_handler(uint32_t smc_fid,
 static int32_t ma35d1_set_cpu_clock(int cpu_freq)
 {
 	uint64_t timeout;
-	uint32_t index = 2; /* 500 MHz */
+	uint32_t reg, index = 2; /* 500 MHz */
 
 	/* CA-PLL */
 	switch (cpu_freq) {
@@ -98,6 +98,11 @@ static int32_t ma35d1_set_cpu_clock(int cpu_freq)
 		WARN("Invaild CA-PLL !!\n");
 		return 1;
 	};
+
+	reg = (mmio_read_32(SYS_BA) >> 16) & 0xff;
+	if (reg == 0xa1 || reg == 0x81 || reg == 0x82)
+		return -1;
+
 	/* set CA35 to DDRPLL */
 	mmio_write_32(CLK_CLKSEL0, (mmio_read_32(CLK_CLKSEL0) & ~0x3) | 0x2);
 
@@ -131,7 +136,7 @@ uintptr_t sip_smc_handler(uint32_t smc_fid,
 			  void *handle,
 			  u_register_t flags)
 {
-	uint32_t ns;
+	uint32_t ns, reg;
 	uint32_t volt;
 	int ret;
 	int CPU_CLK = 0;
@@ -177,6 +182,10 @@ uintptr_t sip_smc_handler(uint32_t smc_fid,
 			CPU_CLK = CPU_PLL_125;
 		else
 			CPU_CLK = CPU_PLL_500;
+
+		reg = (mmio_read_32(SYS_BA) >> 16) & 0xff;
+		if (reg == 0xa1 || reg == 0x81 || reg == 0x82)
+			SMC_RET1(handle, 1);
 
 		ret = ma35d1_set_cpu_clock(CPU_CLK);
 		if (ret == 1) {
