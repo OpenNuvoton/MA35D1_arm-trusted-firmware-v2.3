@@ -32,8 +32,16 @@
 		clock-pll-mode = <0>, <0>, <1>, <2>, <0>, <2>; /* Effective for APLL and VPLL only. */
 							         /* 0: interger mode; 1: fractional mode; 2: disable */
 		lxt-enable = <1>;
+
 		/* rtc power control */
 		rtc-pwrctl-enable = <1>;
+
+		/*
+		 * If 'rtc-pwrctl-enable' is 1, turn on this will enable the RTC power
+		 * off function. The power off time must be 4 ~ 7 seconds.
+		 */
+		// rtc-power-off-time = <4>;
+
 		/* Set PH8/PH9 output hight */
 		set-ph8-ph9-high = <0>;
 		/* Set CLKO Pin function */
