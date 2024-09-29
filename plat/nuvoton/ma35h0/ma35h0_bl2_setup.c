@@ -158,6 +158,35 @@ void bl2_el3_plat_arch_setup(void)
 }
 
 /*******************************************************************************
+ * Transfer SCP_BL2 from Trusted RAM using the SCP Download protocol.
+ * Return 0 on success, -1 otherwise.
+ ******************************************************************************/
+int plat_ma35h0_bl2_handle_scp_bl2(image_info_t *scp_bl2_image_info)
+{
+	/* unlock */
+	mmio_write_32(SYS_RLKTZS, 0x59);
+	mmio_write_32(SYS_RLKTZS, 0x16);
+	mmio_write_32(SYS_RLKTZS, 0x88);
+
+	/* Stop MCU - Enable M4 Core reset */
+	mmio_write_32((SYS_BA+0x20), mmio_read_32((SYS_BA+0x20)) | 0x8);
+
+	/* Load MCU binary into SRAM and DDR, depend on image size */
+	INFO("Load SCP_BL2\n");
+	memcpy((void*)SCPBL2_BASE, (void*)scp_bl2_image_info->image_base, scp_bl2_image_info->image_size);
+	flush_dcache_range(SCPBL2_BASE, scp_bl2_image_info->image_size);
+	mmio_write_32(SYS_BA+0x48, SCPBL2_BASE);
+
+	/* Enable RTP clock */
+	mmio_write_32(CLK_SYSCLK0, mmio_read_32(CLK_SYSCLK0) | 0x2);
+
+	/* lock */
+	mmio_write_32(SYS_RLKTZS, 0);
+
+	return 0;
+}
+
+/*******************************************************************************
  * Gets	SPSR for BL32 entry
  ******************************************************************************/
 static uint32_t	ma35h0_get_spsr_for_bl32_entry(void)
@@ -239,6 +268,14 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 		/* BL33	expects	to receive the primary CPU MPID	(through r0) */
 		bl_mem_params->ep_info.args.arg0 = 0xffff & read_mpidr();
 		bl_mem_params->ep_info.spsr = ma35h0_get_spsr_for_bl33_entry();
+		break;
+
+	case SCP_BL2_IMAGE_ID:
+		/* The subsequent handling of SCP_BL2 is platform specific */
+		err = plat_ma35h0_bl2_handle_scp_bl2(&bl_mem_params->image_info);
+		if (err) {
+			WARN("Failure in platform-specific handling of SCP_BL2 image.\n");
+		}
 		break;
 
 	default:

@@ -44,6 +44,9 @@ $(eval $(call add_define,MA35D0_DDR_MAX_SIZE))
 MA35D0_DRAM_S_BASE ?= 0x8f800000
 $(eval $(call add_define,MA35D0_DRAM_S_BASE))
 
+MA35D0_SCPBL2_BASE ?= 0x24000000
+$(eval $(call add_define,MA35D0_SCPBL2_BASE))
+
 # dump the state on crash console
 CRASH_REPORTING		:=	1
 $(eval $(call add_define,CRASH_REPORTING))
@@ -61,6 +64,10 @@ LOG_LEVEL		:= 40
 # for test suite
 ENABLE_PSCI_STAT	:=	1
 ENABLE_PMF			:=	1
+
+ifeq ($(NEED_SCP_BL2),yes)
+$(eval $(call add_define,MA35D0_LOAD_SCP_BL2))
+endif
 
 ifeq ($(NEED_BL32),yes)
 $(eval $(call add_define,MA35D0_LOAD_BL32))
