@@ -391,6 +391,10 @@ void plat_ma35d0_init(void)
 	/* enable WDT1 reset */
 	mmio_write_32((SYS_BA+0x14), 0x50000);
 
+	/* Let Core1 running */
+	if (SCPBL2_BASE == mmio_read_32(SYS_BA+0x48))
+		sev();
+
 	/* lock */
 	mmio_write_32(SYS_RLKTZS, 0);
 }
