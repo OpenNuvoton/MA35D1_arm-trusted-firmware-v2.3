@@ -259,6 +259,14 @@ uintptr_t sip_smc_handler(uint32_t smc_fid,
 		WARN("SIP_CHIP_RESET not work!\n");
 		SMC_RET1(handle, 0);
 
+	case SIP_SVC_GET_REGISTER:
+		if (((uint32_t)x1 < 0x40000000) || ((uint32_t)x1 > 0x50808000)) {
+			WARN("SIP_SVC_GET_REGISTER - invalid register 0x%x!\n", (uint32_t)x1);
+			SMC_RET1(handle, 1);
+		}
+		// INFO("SIP_SVC_GET_REGISTER read 0x%x = 0x%x\n", (uint32_t)x1, mmio_read_32((uint32_t)x1));
+		SMC_RET1(handle, mmio_read_32((uint32_t)x1));
+
 	case SIP_SVC_VERSION:
 		/* Return the version of current implementation */
 		SMC_RET3(handle, 0, NVT_SIP_SVC_VERSION_MAJOR,
