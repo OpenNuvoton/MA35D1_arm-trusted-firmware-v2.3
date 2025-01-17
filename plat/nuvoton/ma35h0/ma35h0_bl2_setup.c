@@ -130,6 +130,14 @@ void bl2_early_platform_setup2(u_register_t arg0, u_register_t arg1, u_register_
  */
 void bl2_platform_setup(void)
 {
+	unsigned long size;
+
+	/* check DDR size */
+	size = (mmio_read_32(0x404d0f08) + 1) * 0x10000000;
+	if (size != MA35H0_DDR_MAX_SIZE)
+		WARN("Wrong DDR size [0x%lx/0x%x]\n", size, MA35H0_DDR_MAX_SIZE);
+
+	ma35h0_security_setup();
 }
 
 
@@ -138,7 +146,7 @@ void bl2_el3_plat_arch_setup(void)
 	/* Setup the MMU here */
 	mmap_add_region(BL_CODE_BASE, BL_CODE_BASE,
 			BL_CODE_END - BL_CODE_BASE,
-			MT_CODE	| MT_SECURE);
+			MT_CODE | MT_SECURE);
 
 	/* Prevent corruption of preloaded Device Tree */
 	mmap_add_region(DTB_BASE, DTB_BASE,
@@ -150,7 +158,7 @@ void bl2_el3_plat_arch_setup(void)
 
 	generic_delay_timer_init();
 
-	/* TODO: system	config initial,	power? */
+	/* TODO: system config initial, power? */
 
 	ma35h0_arch_security_setup();
 

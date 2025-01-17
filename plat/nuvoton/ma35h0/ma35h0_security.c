@@ -23,8 +23,7 @@ void plat_arm_security_setup(void)
 static void init_tzc400(void)
 {
 #ifdef MA35H0_LOAD_BL32
-	unsigned long long ddr_s_size = MA35H0_DDR_MAX_SIZE - MA35H0_DRAM_SIZE;
-#endif
+	unsigned long long ddr_s_size = MA35H0_DDR_MAX_SIZE - MA35H0_DRAM_SIZE - 0x100000;
 	unsigned int reg = mmio_read_32(0x40460204);
 
 	/* SSMCC clock enable */
@@ -33,40 +32,8 @@ static void init_tzc400(void)
 	/* TZC2 */
 	tzc400_init(MA35H0_TZC2_BASE);
 	tzc400_disable_filters();
-	/* Region 1 set to cover Non-Secure DRAM at 0x8000_0000 */
-	tzc400_configure_region(MA35H0_FILTER_BIT_ALL, 1,
-				MA35H0_DDR_BASE,
-				MA35H0_DDR_BASE +
-				(MA35H0_DDR_MAX_SIZE - 1U),
-				TZC_REGION_S_NONE,
-				PLAT_ARM_TZC_NS_DEV_ACCESS);
-
-	/* Raise an exception if a NS device tries to access secure memory */
-	tzc400_set_action(TZC_ACTION_ERR);
-	tzc400_enable_filters();
-
-	/* TZC0 */
-	tzc400_init(MA35H0_TZC0_BASE);
-	tzc400_disable_filters();
-
-	/* Region 1 set to cover Non-Secure DRAM at 0x8000_0000 */
-	tzc400_configure_region(MA35H0_FILTER_BIT_ALL, 1,
-				MA35H0_DDR_BASE,
-				MA35H0_DDR_BASE +
-				(MA35H0_DDR_MAX_SIZE - 1U),
-				TZC_REGION_S_NONE,
-				PLAT_ARM_TZC_NS_DEV_ACCESS);
-
-	/* Raise an exception if a NS device tries to access secure memory */
-	tzc400_set_action(TZC_ACTION_ERR);
-	tzc400_enable_filters();
-
-#ifdef MA35H0_LOAD_BL32
-	/* TZC2 */
-	tzc400_init(MA35H0_TZC2_BASE);
-	tzc400_disable_filters();
-	/* Region 2 set to cover Secure DRAM at 0x8f80_0000 */
-	tzc400_configure_region(MA35H0_FILTER_BIT_ALL, 2,
+	/* Region 1 set to cover Secure DRAM at 0x8f80_0000 */
+	tzc400_configure_region(MA35H0_TZC2_FILTER, 1,
 				MA35H0_DRAM_S_BASE,
 				MA35H0_DRAM_S_BASE +
 				(ddr_s_size - 1U),
@@ -81,8 +48,8 @@ static void init_tzc400(void)
 	tzc400_init(MA35H0_TZC0_BASE);
 	tzc400_disable_filters();
 
-	/* Region 2 set to cover Secure DRAM at 0x8f80_0000 */
-	tzc400_configure_region(MA35H0_FILTER_BIT_ALL, 2,
+	/* Region 1 set to cover Secure DRAM at 0x8f80_0000 */
+	tzc400_configure_region(MA35H0_TZC0_FILTER, 1,
 				MA35H0_DRAM_S_BASE,
 				MA35H0_DRAM_S_BASE +
 				(ddr_s_size - 1U),
@@ -92,8 +59,8 @@ static void init_tzc400(void)
 	/* Raise an exception if a NS device tries to access secure memory */
 	tzc400_set_action(TZC_ACTION_ERR);
 	tzc400_enable_filters();
-#endif
 	mmio_write_32(0x40460204, (mmio_read_32(0x40460204) & ~0x7f7f0000) | reg);
+#endif
 }
 
 

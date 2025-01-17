@@ -130,6 +130,14 @@ void bl2_early_platform_setup2(u_register_t arg0, u_register_t arg1, u_register_
  */
 void bl2_platform_setup(void)
 {
+	unsigned long size;
+
+	/* check DDR size */
+	size = (mmio_read_32(0x404d0f08) + 1) * 0x10000000;
+	if (size != MA35D0_DDR_MAX_SIZE)
+		WARN("Wrong DDR size [0x%lx/0x%x]\n", size, MA35D0_DDR_MAX_SIZE);
+
+	ma35d0_security_setup();
 }
 
 

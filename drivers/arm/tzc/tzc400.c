@@ -204,6 +204,9 @@ void tzc400_enable_filters(void)
 
 	assert(tzc400.base != 0U);
 
+	if (tzc400.base == 0x404E3000)
+		tzc400.num_filters = 3;
+
 	for (filter = 0U; filter < tzc400.num_filters; filter++) {
 		state = _tzc400_get_gate_keeper(tzc400.base, filter);
 		if (state != 0U) {
