@@ -46,6 +46,29 @@ struct ma35d1_nand_info ma35d1_nand;
 #define BCH_PARITY_LEN_T24      45
 
 
+#define UART_DAT                U(0x40700000)
+#define UART_FIFOSTS            U(0x40700018)
+#define TX_EMPTY                (1 << 22)
+
+static char msg[256];
+
+static void uart0_putc(char c)
+{
+	while (!(mmio_read_32(UART_FIFOSTS) & TX_EMPTY)) ;
+	mmio_write_32(UART_DAT, c);
+}
+
+static void uart0_puts(void)
+{
+	for (int i = 0; i < 256; i++) {
+		if (msg[i] == 0)
+			break;
+		else
+			uart0_putc(msg[i]);
+	}
+	memset(msg, 0, 256);
+}
+
 /*********************************************************/
 int ma35d1_nand_wait_ready(unsigned long delay)
 {
@@ -236,7 +259,7 @@ static void ma35d1_correct_data(unsigned char ucFieidIndex, unsigned char ucErro
 
 static int ma35d1_nand_read_page(struct ma35d1_nand_info *nand, unsigned int page, uintptr_t buffer)
 {
-	unsigned int volatile uStatus, uErrorCnt;
+	unsigned int volatile uECC_UErr, uErrorCnt;
 	unsigned int volatile uF1_status;
 	unsigned char volatile i, j, uLoop;
 
@@ -267,53 +290,57 @@ static int ma35d1_nand_read_page(struct ma35d1_nand_info *nand, unsigned int pag
 	ma35d1_nand_wait_ready(1);
 
 	uF1_status = 0;
-	uStatus = 0;
+	uECC_UErr = 0;
 	/* begin DMA read transfer */
 	mmio_write_32(REG_NANDINTSTS, 0x5);     /* clear DMA and ECC_Field flag */
 	mmio_write_32(REG_NANDCTL, mmio_read_32(REG_NANDCTL) | 0x2);    /* READ enable */
 
 	while(1) {
 		if (nand->max_bit_corr) {
+
 			if (mmio_read_32(REG_NANDINTSTS) & 0x4) {
+
 				switch (mmio_read_32(REG_NANDCTL) & PSIZE) {
-					case PSIZE_2K:
+				case PSIZE_2K:
+					uLoop = 1;
+					break;
+				case PSIZE_4K:
+					if ((mmio_read_32(REG_NANDCTL) & BCH_TSEL) == BCH_24)
 						uLoop = 1;
-						break;
-					case PSIZE_4K:
-						if ((mmio_read_32(REG_NANDCTL) & BCH_TSEL) == BCH_24)
-							uLoop = 1;
-						else
-							uLoop = 2;
-						break;
-					case PSIZE_8K:
-						if ((mmio_read_32(REG_NANDCTL) & BCH_TSEL) == BCH_24)
-							uLoop = 2;
-						else
-							uLoop = 4;
-						break;
+					else
+						uLoop = 2;
+					break;
+				case PSIZE_8K:
+					if ((mmio_read_32(REG_NANDCTL) & BCH_TSEL) == BCH_24)
+						uLoop = 2;
+					else
+						uLoop = 4;
+					break;
 				}
 
-				for (j=0; j<uLoop; j++) {
-					uF1_status = mmio_read_32(REG_NANDECCES0+j*4);
+				for (j = 0; j < uLoop; j++) {
+					uF1_status = mmio_read_32(REG_NANDECCES0 + j * 4);
 					if (!uF1_status)
 						continue;   // no error on this register for 4 fields
-					for (i=1; i<5; i++) {
+
+					for (i = 1; i < 5; i++) {
 						if (!(uF1_status & 0x3)) {     // no error for this field
 							uF1_status >>= 8;  // next field
 							continue;
 						}
 
-						if ((uF1_status & 0x3)==0x01) {
+						if ((uF1_status & 0x3) == 0x01) {
 							/* correctable error in field (j*4+i) */
 							uErrorCnt = (uF1_status >> 2) & 0x1F;
-							ma35d1_correct_data(j*4+i, uErrorCnt, (unsigned char*)(long)buffer);
-							break;
+							snprintf(msg, 200, "Correct page %d ECC-field %d, [%d]\r\n", page, j * 4 + i, uF1_status);
+							uart0_puts();
+							ma35d1_correct_data(j * 4 + i, uErrorCnt, (unsigned char*)(long)buffer);
 						} else if (((uF1_status & 0x3) == 0x02) || ((uF1_status & 0x3) == 0x03)) {
 							/* uncorrectable error or ECC error in 1st field */
-							uStatus = 1;
+							uECC_UErr = j * 4 + i;
 							break;
 						}
-						uStatus >>= 8;  // next field
+						uF1_status >>= 8;  // next field
 					}
 				}
 				mmio_write_32(REG_NANDINTSTS, 0x4);     // clear ECC_FLD_Error
@@ -331,8 +358,9 @@ static int ma35d1_nand_read_page(struct ma35d1_nand_info *nand, unsigned int pag
 
 	mmio_write_32(REG_NANDINTSTS, 0x5); /* clear DMA and ECC flag */
 
-	if (uStatus) {
-		ERROR("Err-ECC 0x%x / 0x%x\n", uStatus, uF1_status);
+	if (uECC_UErr) {
+		snprintf(msg, 200, "Page %d ECC-field %d Uncorrectable error / %d\r\n", page, uECC_UErr, uF1_status);
+		uart0_puts();
 		return 1;
 	}
 
