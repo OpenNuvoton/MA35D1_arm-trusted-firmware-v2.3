@@ -522,7 +522,10 @@ void plat_ma35d1_init(void)
 	mmio_write_32((SYS_BA+0x14), 0x70000);
 
 	/* Let MCU running - Disable M4 Core reset */
-	mmio_write_32((SYS_BA+0x20), mmio_read_32((SYS_BA+0x20)) & ~0x8);
+#ifdef MA35D1_LOAD_SCP_BL2
+	if (SCPBL2_BASE==0x24000000)
+		mmio_write_32((SYS_BA+0x20), mmio_read_32((SYS_BA+0x20)) & ~0x8);
+#endif
 
 	/* Let Core1 running */
 	if (SCPBL2_BASE == mmio_read_32(SYS_BA+0x48))
