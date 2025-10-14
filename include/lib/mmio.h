@@ -73,4 +73,12 @@ static inline void mmio_clrsetbits_32(uintptr_t addr,
 	mmio_write_32(addr, (mmio_read_32(addr) & ~clear) | set);
 }
 
+static inline void mmio_write_iprst0(uint32_t value)
+{
+	if (mmio_read_32(0x40460020) & 0x8)
+		mmio_write_32(0x40460020, value|0x8);
+	else
+		mmio_write_32(0x40460020, value);
+}
+
 #endif /* MMIO_H */
