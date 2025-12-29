@@ -274,6 +274,9 @@ void ma35d1_deep_power_down_sw(void)
 {
 	ma35d1_UnlockReg();
 
+INFO("ma35d1_deep_power_down_sw - SYS_RSTDEBCTL = 0x%x\r\n", mmio_read_32(SYS_BASE + 0x18));
+	//[11:8]=
+
 	//[31:24]=DDR time out & delay
 	mmio_write_32(SYS_BASE + DDRCQCSR, mmio_read_32(SYS_BASE + DDRCQCSR) | 0x1007f);
 
@@ -295,7 +298,7 @@ void ma35d1_deep_power_down_sw(void)
 	mmio_write_32(SYS_BASE + PMUIEN,
 			mmio_read_32(SYS_BASE + PMUIEN) | (1 << 8));
 
-	mmio_write_32(CLK_PWRCTL, mmio_read_32(CLK_PWRCTL) | 0x00E0F800); // Turn on auto off bits...
+	mmio_write_32(CLK_PWRCTL, mmio_read_32(CLK_PWRCTL) | 0x00E0E800); // Turn on auto off bits...
 
 	ma35d1_LockReg();
 }
@@ -387,7 +390,7 @@ static void ma35d1_pwr_domain_suspend_finish(const
 #if !MA35D1_DDR_HW_POWER_DOWN
 	ma35d1_ddr_wk();
 #endif
-	/* Clear poer down flag */
+	/* Clear power down flag */
 	mmio_write_32(SYS_BASE + PMUSTS, (1 << 8) | 0x1);
 
 	/* Clear Core 1 Warm-boot */
