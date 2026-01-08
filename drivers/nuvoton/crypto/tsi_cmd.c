@@ -745,3 +745,19 @@ err_out:
 	return ret;
 }
 
+/*************************************************************************************/
+/*                                                                                   */
+/*  The following APIs are not supported on A version chips.                         */
+/*                                                                                   */
+/*************************************************************************************/
+int TSI_OTP_Program(uint32_t u32Addr, uint32_t u32Data)
+{
+	TSI_REQ_T  req;
+
+	memset(&req, 0, sizeof(req));
+	req.cmd[0] = (CMD_OTP_PROGRAM << 16);
+	req.cmd[1] = u32Addr;
+	req.cmd[2] = u32Data;
+	return tsi_send_command_and_wait(&req, CMD_TIME_OUT_2S);
+}
+
