@@ -14,13 +14,10 @@
 #include <ma35d1_crypto.h>
 #include <tsi_cmd.h>
 
-#if FIP_DE_AES
 #define UART_DAT                U(0x40700000)
 #define UART_FIFOSTS            U(0x40700018)
 #define RX_EMPTY                (1 << 14)
 #define TX_EMPTY                (1 << 22)
-
-#define TIMEOUT_US_10_MS	120000U
 
 static char uart0_getc(void)
 {
@@ -57,6 +54,7 @@ static char ch2hex(char ch)
 	return ch;
 }
 
+#if FIP_DE_AES
 static void Hex2Reg(char input[], unsigned int volatile reg[])
 {
 	char      hex;
@@ -174,7 +172,89 @@ static int EnterRMAState(void)
 	}
 	return 0;
 }
+#else
+static void Hex2Reg(char input[], unsigned int volatile reg[])
+{
+	char      hex;
+	int       si, ri;
+	unsigned int  i, val32;
 
+	si = 8 - 1;
+	ri = 0;
+
+	while (si >= 0) {
+		val32 = 0UL;
+		for (i = 0UL; (i < 8UL) && (si >= 0); i++) {
+			hex = ch2hex(input[si]);
+			val32 |= (unsigned int)hex << (i * 4UL);
+			si--;
+		}
+		val32 = (val32<<24) | ((val32<<8)&0xff0000) | ((val32>>8)&0xff00) | (val32>>24);
+		reg[ri--] = val32;
+	}
+}
+
+static int EnterRMAState(void)
+{
+	int j, status = 0;
+	char ch;
+	static char data[8];
+	static unsigned int data0;
+	uint64_t timeout;
+
+	printf("please press the 'Esc' first\n");
+	/* reset RX FIFO */
+	mmio_write_32(0x40700008, mmio_read_32(0x40700008) | 0x2);
+	while((mmio_read_32(0x40700008) & 0x2) == 0x2);
+	j = 0;
+	timeout = read_cntpct_el0();
+	while (1) {
+		ch = uart0_getc();
+		if (ch == 0x1b)
+			break;
+		if ((read_cntpct_el0() - timeout) > 60000000) //5000ms
+			break;
+	}
+	printf("please input the deployed password\n");
+	memset(data, 0, 8);
+	/* reset RX FIFO */
+	mmio_write_32(0x40700008, mmio_read_32(0x40700008) | 0x2);
+	while((mmio_read_32(0x40700008) & 0x2) == 0x2);
+	j = 0;
+	while (1) {
+		ch = uart0_getc();
+		if (ch == 0xd) {
+			printf("done\n");
+			break;
+		}
+		data[j++] = ch;
+	}
+	uart0_puts(data);
+	Hex2Reg(data, &data0);
+
+	/* check the password */
+	if ((mmio_read_32(SYS_CHIPCFG) & 0x100) == 0x000) {
+		/* Enable whc0 clock */
+		mmio_write_32(CLK_SYSCLK1, (mmio_read_32(CLK_SYSCLK1) | 0x10));
+		/* connect with TSI */
+		while (1) {
+			if (TSI_Sync() == 0)
+				break;
+		}
+		if (mmio_read_32(0x404601b0) != data0) {
+			printf("data compare error\n");
+			return 1;
+		}
+		/* PLM = RMA */
+		status = TSI_OTP_Program(0x108, 0x7);
+		TSI_Reset();
+		if (status != 0)
+			return status;
+		else
+			mmio_write_32(0x40460020, 0x1);
+	}
+	return 0;
+}
 #endif
 
 
@@ -183,16 +263,13 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 				  u_register_t arg2 __unused,
 				  u_register_t arg3 __unused)
 {
-#if FIP_DE_AES
 	uint64_t timeout;
 	unsigned int volatile state = 0;
-#endif
 
 	/* Initialize the platform config for future decision making */
 	ma35d1_config_setup();
 
-	/* version B + PLM = deployed + secure boot */
-#if FIP_DE_AES
+	/* version B, PLM = deployed */
 	if (((mmio_read_32(SYS_BA + 0x1f0) & 0x0f000000) == 0x1000000) &&
 	    ((mmio_read_32(SSPCC_BASE + 0x704) & 0xf) == 0x3)) {
 
@@ -205,7 +282,6 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 		mmio_write_32(0x40700008, mmio_read_32(0x40700008) | 0x2);
 		while((mmio_read_32(0x40700008) & 0x2) == 0x2);
 		state = 0;
-		/* 10ms timeout */
 		generic_delay_timer_init();
 		timeout = read_cntpct_el0();
 		while (1) {
@@ -214,7 +290,7 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 				state = 1;
 				break;
 			}
-			if ((read_cntpct_el0() - timeout) > 2400000) //200ms
+			if ((read_cntpct_el0() - timeout) > 2400000) /* 200 ms */
 				break;
 		}
 		if (state) {
@@ -224,8 +300,6 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 				printf("enter RMA fail. 0x%x\n", ret);
 		}
 	}
-#endif
-
 
 	ma35d1_ddr_init();
 
