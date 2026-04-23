@@ -274,7 +274,7 @@ void ma35d0_ddr_setting(struct nvt_ddr_init_param ddrparam, int size)
 	uint32_t u32TimeOut1 = 0, u32TimeOut2 = 0, u32TimeOut3 = 0;
 	uint32_t pid, is_20ns = 0;
 
-	pid = (mmio_read_32(SYS_BA) & 0x00ff0000);
+	pid = (mmio_read_32(SYS_BA) & 0xFFFF0000);
 	is_20ns = pid_requires_20ns(pid);
 	for(i = 0; i < size; i++)
 	{
