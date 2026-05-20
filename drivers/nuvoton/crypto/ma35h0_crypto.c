@@ -588,11 +588,11 @@ int ECC_VerifySignature_KS(char *message, int x_ksnum, int y_ksnum, char *R, cha
 
 		if (y_ksnum >= 0x80)
 		{
-			ksxy |= (2<<ECC_KSXY_RSSRCX_OFFSET) | ((y_ksnum - 0x80) << 8);
+			ksxy |= (2<<ECC_KSXY_RSSRCY_OFFSET) | ((y_ksnum - 0x80) << 8);
 		}
 		else if (y_ksnum >= 0)
 		{
-			ksxy |= (0<<ECC_KSXY_RSSRCX_OFFSET) | (y_ksnum << 8);
+			ksxy |= (0<<ECC_KSXY_RSSRCY_OFFSET) | (y_ksnum << 8);
 		}
 		else
 		{
@@ -663,7 +663,10 @@ int ECC_VerifySignature_KS(char *message, int x_ksnum, int y_ksnum, char *R, cha
 
 		/*  (27) Read X1 registers to get x1\A1\A6 (mod n) */
 		Reg2Hex(pCurve->Echar, (unsigned int *)ECC_X1(0), temp_hex_str);
-
+		if(strcmp(temp_hex_str, R) != 0)
+		{
+			ret = -2;
+		}
 	}  /* ret == 0 */
 
 	return ret;
