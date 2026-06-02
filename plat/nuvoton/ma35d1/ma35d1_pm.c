@@ -23,6 +23,7 @@
 #include <lib/utils.h>
 #include "ma35d1_private.h"
 
+#define DO_DDR_POWER_DOWN		1
 #define MA35D1_DDR_HW_POWER_DOWN	0
 
 /* Macros to read the rk power domain state */
@@ -59,7 +60,6 @@ static __inline void ma35d1_UnlockReg(void)
 	} while (mmio_read_32(0x404601A0) == 0UL);
 
 }
-
 
 static __inline void ma35d1_LockReg(void)
 {
@@ -138,8 +138,7 @@ void ma35d1_ddr_hw_pd(void)
 			(DDR_QCH_BPPORT6 << 6));//disable ddr 7 ports qch bypass
 
 	//L2 auto-flush
-	mmio_write_32(SYS_BASE + PMUCR,
-			mmio_read_32(SYS_BASE + PMUCR) & ~(1 << 4));
+	mmio_write_32(SYS_BASE + PMUCR, mmio_read_32(SYS_BASE + PMUCR) & ~(1 << 4));
 }
 
 void ma35d1_deep_power_down(void)
@@ -149,16 +148,13 @@ void ma35d1_deep_power_down(void)
 	ma35d1_ddr_hw_pd();
 
 	//[0]=pg_eanble, Enable clock gating
-	mmio_write_32(SYS_BASE + PMUCR,
-			mmio_read_32(SYS_BASE + PMUCR) | (1 << 0));
+	mmio_write_32(SYS_BASE + PMUCR, mmio_read_32(SYS_BASE + PMUCR) | (1 << 0));
 
 	//[16]=pd_eanble, Enable PD
-	mmio_write_32(SYS_BASE + PMUCR,
-			mmio_read_32(SYS_BASE + PMUCR) | (1 << 16));
+	mmio_write_32(SYS_BASE + PMUCR, mmio_read_32(SYS_BASE + PMUCR) | (1 << 16));
 
 	//[16]=PMUIEN, Enable PD
-	mmio_write_32(SYS_BASE + PMUIEN,
-			mmio_read_32(SYS_BASE + PMUIEN) | (1 << 8));
+	mmio_write_32(SYS_BASE + PMUIEN, mmio_read_32(SYS_BASE + PMUIEN) | (1 << 8));
 
 	ma35d1_LockReg();
 }
@@ -274,31 +270,33 @@ void ma35d1_deep_power_down_sw(void)
 {
 	ma35d1_UnlockReg();
 
-INFO("ma35d1_deep_power_down_sw - SYS_RSTDEBCTL = 0x%x\r\n", mmio_read_32(SYS_BASE + 0x18));
+	// INFO("ma35d1_deep_power_down_sw - SYS_RSTDEBCTL = 0x%x\r\n", mmio_read_32(SYS_BASE + 0x18));
 	//[11:8]=
 
 	//[31:24]=DDR time out & delay
 	mmio_write_32(SYS_BASE + DDRCQCSR, mmio_read_32(SYS_BASE + DDRCQCSR) | 0x1007f);
 
 	//Disable L2 flush by PMU
-	mmio_write_32(SYS_BASE + PMUCR,
-			mmio_read_32(SYS_BASE + PMUCR) | (1 << 4));
+	mmio_write_32(SYS_BASE + PMUCR, mmio_read_32(SYS_BASE + PMUCR) | (1 << 4));
 
+#if DO_DDR_POWER_DOWN
 	ma35d1_ddr_pd();
+#endif
 
 	//[0]=pg_eanble, Enable clock gating
-	mmio_write_32(SYS_BASE + PMUCR,
-			mmio_read_32(SYS_BASE + PMUCR) | (1 << 0));
+	mmio_write_32(SYS_BASE + PMUCR, mmio_read_32(SYS_BASE + PMUCR) | (1 << 0));
 
 	//[16]=pd_eanble, Enable PD
-	mmio_write_32(SYS_BASE + PMUCR,
-			mmio_read_32(SYS_BASE + PMUCR) | (1 << 16));
+	mmio_write_32(SYS_BASE + PMUCR, mmio_read_32(SYS_BASE + PMUCR) | (1 << 16));
 
 	//[16]=PMUIEN, Enable PD
-	mmio_write_32(SYS_BASE + PMUIEN,
-			mmio_read_32(SYS_BASE + PMUIEN) | (1 << 8));
+	mmio_write_32(SYS_BASE + PMUIEN, mmio_read_32(SYS_BASE + PMUIEN) | (1 << 8));
 
+#if DO_DDR_POWER_DOWN
 	mmio_write_32(CLK_PWRCTL, mmio_read_32(CLK_PWRCTL) | 0x00E0E800); // Turn on auto off bits...
+#else
+	mmio_write_32(CLK_PWRCTL, mmio_read_32(CLK_PWRCTL) | 0x00A08800); // Turn on auto off bits...
+#endif
 
 	ma35d1_LockReg();
 }
@@ -383,11 +381,10 @@ int ma35d1_validate_ns_entrypoint(uintptr_t ns_entrypoint)
 	return PSCI_E_SUCCESS;
 }
 
-
 static void ma35d1_pwr_domain_suspend_finish(const
 			psci_power_state_t * target_state)
 {
-#if !MA35D1_DDR_HW_POWER_DOWN
+#if !MA35D1_DDR_HW_POWER_DOWN && DO_DDR_POWER_DOWN
 	ma35d1_ddr_wk();
 #endif
 	/* Clear power down flag */
@@ -419,7 +416,6 @@ static void __dead2 ma35d1_system_off(void)
 		;
 }
 
-
 static void __dead2 ma35d1_system_reset(void)
 {
 	ma35d1_UnlockReg();
@@ -429,7 +425,6 @@ static void __dead2 ma35d1_system_reset(void)
 	while (1)
 		;
 }
-
 
 static int ma35d1_validate_power_state(unsigned int power_state,
 					psci_power_state_t * req_state)

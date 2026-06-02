@@ -320,7 +320,7 @@ void ma35h0_ddr_setting(struct nvt_ddr_init_param ddrparam, int size)
 
 #if 1   /* 2023.04.21, Adjust DDR AXI port priority to give DCUltra the higest priority */
 	mmio_write_32(UMCTL2_BA+0x328, 0x1);
-	INFO("\n  >>>>> AXI Port Priority Finish: 0x%x, 0x%x, 0x%x, 0x%x \n", mmio_read_32(UMCTL2_BA + 0x564),mmio_read_32(UMCTL2_BA + 0x4b4), mmio_read_32(UMCTL2_BA + 0x614), mmio_read_32(UMCTL2_BA + 0x404));
+	// INFO("\n  >>>>> AXI Port Priority Finish: 0x%x, 0x%x, 0x%x, 0x%x \n", mmio_read_32(UMCTL2_BA + 0x564),mmio_read_32(UMCTL2_BA + 0x4b4), mmio_read_32(UMCTL2_BA + 0x614), mmio_read_32(UMCTL2_BA + 0x404));
 
 	mmio_write_32(UMCTL2_BA+0x564, mmio_read_32(UMCTL2_BA + 0x564) | (0x1 << 5));
 	mmio_write_32(UMCTL2_BA+0x568, mmio_read_32(UMCTL2_BA + 0x568) | (0x1 << 5));
@@ -332,7 +332,7 @@ void ma35h0_ddr_setting(struct nvt_ddr_init_param ddrparam, int size)
 	mmio_write_32(UMCTL2_BA+0x408, mmio_read_32(UMCTL2_BA + 0x408) | (0x1f << 5));
 	mmio_write_32(UMCTL2_BA+0x328, 0x0);
 	while((mmio_read_32(UMCTL2_BA + 0x324) & 0x1) != 0x00000001);
-	INFO("\n  >>>>> AXI Port Priority Finish: 0x%x, 0x%x, 0x%x, 0x%x \n", mmio_read_32(UMCTL2_BA + 0x564),mmio_read_32(UMCTL2_BA + 0x4b4), mmio_read_32(UMCTL2_BA + 0x614), mmio_read_32(UMCTL2_BA + 0x404));
+	// INFO("\n  >>>>> AXI Port Priority Finish: 0x%x, 0x%x, 0x%x, 0x%x \n", mmio_read_32(UMCTL2_BA + 0x564),mmio_read_32(UMCTL2_BA + 0x4b4), mmio_read_32(UMCTL2_BA + 0x614), mmio_read_32(UMCTL2_BA + 0x404));
 #endif
 
 	while((mmio_read_32(UMCTL2_BASE + 0x324) & 0x00000001) != 0x00000001);
