@@ -26,6 +26,9 @@ $(eval $(call add_define,MA35D1_MAX_CPUS_PER_CLUSTER))
 $(eval $(call add_define,MA35D1_MAX_PE_PER_CPU))
 $(eval $(call add_define,MA35D1_INTERCONNECT_DRIVER))
 
+DDR_AUTO_DETECT ?= 0
+$(eval $(call add_define,DDR_AUTO_DETECT))
+
 FIP_DE_AES ?= 0
 $(eval $(call add_define,FIP_DE_AES))
 

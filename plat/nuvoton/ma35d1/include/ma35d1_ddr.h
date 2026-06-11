@@ -536,4 +536,35 @@ struct DDR_Setting
 	uint32_t init_flow_offset;
 };
 
+#if DDR_AUTO_DETECT
+#include <ma35d1_ddr_init_table.h>
+
+#define MA35D16A887C_312_256_1_PID    0x12U
+#define MA35D16AI87C_312_256_1_PID    0x15U
+#define MA35D16AJ87C_312_512_1_PID    0x16U
+#define MA35D16F887C_216_256_1_PID    0x22U
+#define MA35D16F987C_216_512_1_PID    0x24U
+#define MA35D16FI87C_216_256_1_PID    0x2AU
+#define MA35D16FJ87C_216_512_1_PID    0x2CU
+
+#define MA35D1_DDR_PID_MASK           0x00FF0000U
+#define MA35D1_DDR_PID_SHIFT          16U
+
+#define MA35D1_DDR_CFG_LIST(_) \
+	_(MA35D16A887C_312_256_1, "MA35D16A887C DDR3 256MB") \
+	_(MA35D16AI87C_312_256_1, "MA35D16AI87C DDR3 256MB") \
+	_(MA35D16AJ87C_312_512_1, "MA35D16AJ87C DDR3 512MB") \
+	_(MA35D16F887C_216_256_1, "MA35D16F887C DDR3 256MB") \
+	_(MA35D16F987C_216_512_1, "MA35D16F987C DDR3 512MB") \
+	_(MA35D16FI87C_216_256_1, "MA35D16FI87C DDR3 256MB") \
+	_(MA35D16FJ87C_216_512_1, "MA35D16FJ87C DDR3 512MB")
+
+#define APPLY_DDR_CFG(_name, _desc) \
+	case _name##_PID: \
+		INFO("DDR setting: %s\n", _desc); \
+		ma35d1_ddr_setting(_name, sizeof(_name)/sizeof(uint32_t)); \
+		break;
+
+#endif
+
 #endif /* MA35D1_DDR_H */
