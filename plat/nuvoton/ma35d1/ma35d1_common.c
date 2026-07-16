@@ -212,6 +212,9 @@ static void ma35d1_clock_setup(void)
 			break;
 	};
 
+	if (MA35D1_VOL_CORE != 120)
+		ma35d1_set_pmic(VOL_CORE, MA35D1_VOL_CORE);
+
 	/* DDR-PLL */
 	INFO("DDR-PLL is 266000000 Hz.\n");
 	mmio_write_32(CLK_PLL2CTL0, 0x0F04102C);  //for DDRPLL is 266Mhz
