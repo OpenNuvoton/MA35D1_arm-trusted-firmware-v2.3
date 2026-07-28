@@ -745,19 +745,60 @@ err_out:
 	return ret;
 }
 
-/*************************************************************************************/
-/*                                                                                   */
-/*  The following APIs are not supported on A version chips.                         */
-/*                                                                                   */
-/*************************************************************************************/
+int TSI_Load_Image(uint32_t base, uint32_t size)
+{
+	TSI_REQ_T  req;
+	int        ret;
+
+	memset(&req, 0, sizeof(req));
+	req.cmd[0] = (CMD_TSI_LOAD_EX_FUNC << 16);
+	req.cmd[1] = base;
+	req.cmd[2] = size;
+	ret = tsi_send_command_and_wait(&req, CMD_TIME_OUT_2S);
+	if (ret != 0)
+		return ret;
+	return 0;
+}
+
+int TSI_OTP_Read(uint32_t u32Addr, uint32_t *u32Data)
+{
+	TSI_REQ_T  req;
+	int  ret;
+
+	memset(&req, 0, sizeof(req));
+	req.cmd[0] = (CMD_EXT_OTP_READ << 16);
+	req.cmd[1] = u32Addr;
+	ret = tsi_send_command_and_wait(&req, CMD_TIME_OUT_2S);
+	*u32Data = req.ack[1];
+	return ret;
+}
+
+int TSI_OTP_Read_UMSTS(uint32_t *umsts0, uint32_t *umsts1)
+{
+	TSI_REQ_T  req;
+	int  ret;
+
+	memset(&req, 0, sizeof(req));
+	req.cmd[0] = (CMD_EXT_OTP_READ_UMSTS << 16);
+	ret = tsi_send_command_and_wait(&req, CMD_TIME_OUT_2S);
+	if (ret == 0) {
+		*umsts0 = req.ack[1];
+		*umsts1 = req.ack[2];
+	}
+	return ret;
+}
+
 int TSI_OTP_Program(uint32_t u32Addr, uint32_t u32Data)
 {
 	TSI_REQ_T  req;
+	int  ret;
 
 	memset(&req, 0, sizeof(req));
-	req.cmd[0] = (CMD_OTP_PROGRAM << 16);
+	req.cmd[0] = (CMD_EXT_OTP_PROGRAM << 16);
 	req.cmd[1] = u32Addr;
 	req.cmd[2] = u32Data;
-	return tsi_send_command_and_wait(&req, CMD_TIME_OUT_2S);
+	ret = tsi_send_command_and_wait(&req, CMD_TIME_OUT_2S);
+	if (req.ack[2] != 0)
+		printf("OTP Program may failed ==> OTP_STS = 0x%x\n", req.ack[2]);
+	return ret;
 }
-

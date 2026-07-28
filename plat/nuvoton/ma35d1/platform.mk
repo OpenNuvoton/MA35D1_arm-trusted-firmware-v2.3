@@ -26,6 +26,9 @@ $(eval $(call add_define,MA35D1_MAX_CPUS_PER_CLUSTER))
 $(eval $(call add_define,MA35D1_MAX_PE_PER_CPU))
 $(eval $(call add_define,MA35D1_INTERCONNECT_DRIVER))
 
+OTP_ANTI_ROLLBACK ?= 0
+$(eval $(call add_define,OTP_ANTI_ROLLBACK))
+
 DDR_AUTO_DETECT ?= 0
 $(eval $(call add_define,DDR_AUTO_DETECT))
 
@@ -167,6 +170,7 @@ BL2_SOURCES		+=	common/desc_image_load.c			\
 				drivers/nuvoton/qspi/ma35d1_qspi.c		\
 				drivers/nuvoton/sdhc/ma35d1_sdhc.c		\
 				plat/nuvoton/ma35d1/ma35d1_bl2_el3_setup.c	\
+				plat/nuvoton/ma35d1/ma35d1_otp_fuse.c		\
 				plat/nuvoton/ma35d1/ma35d1_bl2_mem_params_desc.c	\
 				plat/nuvoton/ma35d1/ma35d1_image_load.c		\
 				drivers/io/io_semihosting.c			\

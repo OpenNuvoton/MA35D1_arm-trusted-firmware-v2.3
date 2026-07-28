@@ -67,6 +67,18 @@
 
 /* OTP commands supported after B version */
 #define CMD_OTP_PROGRAM         0x0B05
+#define CMD_OTP_READ            0x0B10
+#define	CMD_OTP_ERASE           0x0B13
+#define	CMD_OTP_READ_UMSTS      0x0B31
+#define	CMD_OTP_GET_STS         0x0B33
+
+/* TSI extension commands supported by patch image */
+#define CMD_EXT_OTP_PROGRAM     0xF905U
+#define CMD_EXT_OTP_READ        0xF910U
+#define	CMD_EXT_OTP_READ_LOCK   0xF911U
+#define	CMD_EXT_OTP_ERASE       0xF913U
+#define	CMD_EXT_OTP_READ_UMSTS  0xF931U
+#define	CMD_EXT_OTP_GET_STS     0xF933U
 
 /*------------------------------------------------------------------*/
 /*  TSI command ACK status                                          */
@@ -168,7 +180,6 @@ typedef enum {
 
 #define TSI_CMD_WORD0(cc, sc, sid)	((cc<<24)|(sc<<16)|sid)
 
-
 #define CMD_TIME_OUT_1S             100     /* general time-out 1 seconds */
 #define CMD_TIME_OUT_2S             200     /* general time-out 2 seconds */
 #define CMD_TIME_OUT_3S             300     /* general time-out 3 seconds */
@@ -187,7 +198,6 @@ typedef enum {
 #define RSA_KEY_SEL_KS_OTP          0x1
 #define RSA_KEY_SEL_KS_SRAM         0x2
 #define RSA_KEY_SEL_USER            0x3
-
 
 int TSI_Sync(void);
 int TSI_Get_Version(uint32_t *ver_code);
@@ -222,6 +232,10 @@ int TSI_ECC_Multiply(E_ECC_CURVE curve_id, int type, int msel, int sps, int m_kn
 int TSI_run_sha(int inswap, int outswap, int mode_sel, int hmac,
 		int mode, int keylen, int ks, int ks_num,
 		int wcnt, int data_cnt, unsigned int src_addr, unsigned int dest_addr);
+int TSI_Load_Image(uint32_t base, uint32_t size);
+int TSI_OTP_Read(uint32_t u32Addr, uint32_t *u32Data);
+int TSI_OTP_Read_UMSTS(uint32_t *umsts0, uint32_t *umsts1);
 int TSI_OTP_Program(uint32_t u32Addr, uint32_t u32Data);
+int TSI_OTP_Read_STATUS(uint32_t *status, uint32_t *ctrl);
 
 #endif	/* __TSI_CMD_H__ */
