@@ -93,7 +93,11 @@ static void sdh_set_clock(struct mmc *mmc, unsigned int clock)
 	mmio_write_16(mmc->base+SDH_CLOCK_CONTROL, 0);
 
 	/* Version 3.00 divisors must be a multiple of 2. */
-	div = (180000000 / 2) / clock;
+	for (div = 2; div < 2046; div += 2) {
+		if ((180000000 / div) <= clock)
+			break;
+	}
+	div >>=1;
 
 	clk |= (div & 0xff) << 8;
 	clk |= 0x01;    //SDHCI_CLOCK_INT_EN;
