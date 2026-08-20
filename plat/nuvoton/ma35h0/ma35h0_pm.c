@@ -20,6 +20,7 @@
 #include <platform_def.h>
 
 #include <common/interrupt_props.h>
+#include <drivers/delay_timer.h>
 #include <lib/utils.h>
 #include "ma35h0_private.h"
 
@@ -412,10 +413,82 @@ static void ma35h0_pwr_domain_suspend_finish(const
  ******************************************************************************/
 static void __dead2 ma35h0_system_off(void)
 {
-	while (1)
-		;
-}
+	unsigned int timeout;
+	uint32_t reg;
 
+	/* Linux may gate the RTC APB clock while shutting devices down. */
+	reg = mmio_read_32(CLK_APBCLK0);
+	INFO("PSCI system off: CLK_APBCLK0 before = 0x%08x\n", reg);
+	mmio_write_32(CLK_APBCLK0, reg | CLK_APBCLK0_RTCEN);
+	dsb();
+	// INFO("PSCI system off: CLK_APBCLK0 after = 0x%08x\n", mmio_read_32(CLK_APBCLK0));
+
+	// INFO("PSCI system off: RTC_INIT = 0x%08x, SINFASTS = 0x%08x\n",
+	//     mmio_read_32(RTC_INIT), mmio_read_32(RTC_SINFASTS));
+	// INFO("PSCI system off: RTC_PWRSTS = 0x%08x, SSPCC_SINFAEN = 0x%08x\n",
+	//     mmio_read_32(RTC_PWRSTS), mmio_read_32(SSPCC_BASE + 0x200));
+
+	if ((mmio_read_32(RTC_INIT) & RTC_INIT_ACTIVE) == 0U) {
+		// INFO("PSCI system off: initializing inactive RTC\n");
+		mmio_write_32(RTC_INIT, RTC_INIT_MAGIC);
+		dsb();
+		// INFO("PSCI system off: RTC_INIT after = 0x%08x\n", mmio_read_32(RTC_INIT));
+	}
+
+	/* RTC writes are ignored until the VBAT-domain isolation is released. */
+	for (timeout = 0U; timeout < 100U; timeout++) {
+		reg = mmio_read_32(RTC_PWRCTL);
+		if ((reg & RTC_PWRCTL_ISORLS) != 0U)
+			break;
+		udelay(1000U);
+	}
+
+	reg = mmio_read_32(RTC_PWRCTL);
+	// INFO("PSCI system off: RTC_PWRCTL before = 0x%08x, isolation wait = %u ms\n", reg, timeout);
+
+	if ((reg & RTC_PWRCTL_ISORLS) != 0U) {
+		/*
+		 * Require RTC_nRWAKE to remain low for one second before power-on.
+		 * Use level-trigger mode with an external always-on pull-up so a
+		 * deliberate button press can re-enable the power-control state.
+		 */
+		mmio_write_32(RTC_PWRCTL,
+				(reg & ~(RTC_PWRCTL_PWRONTIME_MASK |
+					 RTC_PWRCTL_EDGETRIG)) |
+				RTC_PWRCTL_PWRONTIME_1S);
+		dsb();
+		udelay(1000U);
+		reg = mmio_read_32(RTC_PWRCTL);
+		// INFO("PSCI system off: RTC_PWRCTL 1s level wake = 0x%08x\n", reg);
+
+		/*
+		 * Clear PWRST and PWRON together to leave the state machine in a
+		 * stable Power_Off state. A subsequent RTC_nRWAKE low transition
+		 * sets PWRST automatically. Changing PWRST requires the 0x5aa5 key.
+		 */
+		mmio_write_32(RTC_PWRCTL,
+				(RTC_PWRCTL_PWRSTCLR_KEY | reg) &
+				~(RTC_PWRCTL_PWRST | RTC_PWRCTL_PWRON));
+		dsb();
+		udelay(1000U);
+		reg = mmio_read_32(RTC_PWRCTL);
+		// INFO("PSCI system off: RTC_PWRCTL PWRON clear = 0x%08x\n", reg);
+
+		/* SWPCLR is effective only while RTC_nRWAKE is held low. */
+		if ((reg & RTC_PWRCTL_PWRKEY) == 0U) {
+			mmio_write_32(RTC_PWRCTL, reg | RTC_PWRCTL_SWPCLR);
+			dsb();
+			udelay(1000U);
+			INFO("PSCI system off: RTC_PWRCTL SWPCLR = 0x%08x\n",
+			     mmio_read_32(RTC_PWRCTL));
+		}
+	} else {
+		ERROR("PSCI system off: RTC VBAT domain remains isolated; writes ignored\n");
+	}
+
+	while (1)
+		wfi();
+}
 
 static void __dead2 ma35h0_system_reset(void)
 {

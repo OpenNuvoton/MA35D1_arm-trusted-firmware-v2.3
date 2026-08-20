@@ -189,6 +189,27 @@
 #define	CLK_PLL5CTL1	U(0x404602B4)
 #define	CLK_PLL5CTL2	U(0x404602B8)
 
+/* RTC registers */
+#define RTC_BA				U(0x40410000)
+#define RTC_INIT			(RTC_BA + U(0x000))
+#define RTC_SINFASTS			(RTC_BA + U(0x004))
+#define RTC_PWRCTL			(RTC_BA + U(0x180))
+#define RTC_PWRSTS			(RTC_BA + U(0x184))
+
+#define CLK_APBCLK0_RTCEN		BIT_32(29)
+#define RTC_INIT_ACTIVE			BIT_32(0)
+#define RTC_INIT_MAGIC			U(0xa5eb1357)
+
+#define RTC_PWRCTL_PWRSTCLR_KEY		(U(0x5aa5) << 16)
+#define RTC_PWRCTL_ISORLS		BIT_32(15)
+#define RTC_PWRCTL_PWRONTIME_MASK	GENMASK_32(11, 8)
+#define RTC_PWRCTL_PWRONTIME_1S		(U(0xc) << 8)
+#define RTC_PWRCTL_PWRKEY		BIT_32(7)
+#define RTC_PWRCTL_PWRST		BIT_32(6)
+#define RTC_PWRCTL_EDGETRIG		BIT_32(5)
+#define RTC_PWRCTL_SWPCLR		BIT_32(1)
+#define RTC_PWRCTL_PWRON		BIT_32(0)
+
 /* sspcc registers */
 #define	SSPCC_BASE	U(0x404F0000)
 
