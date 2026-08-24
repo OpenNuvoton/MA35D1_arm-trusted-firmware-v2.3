@@ -534,4 +534,30 @@ struct DDR_Setting
 	uint32_t init_flow_offset;
 };
 
+#if DDR_AUTO_DETECT
+#include <ma35d0_ddr_init_table.h>
+
+
+#define MA35D03F764C_1_PID	0x81U
+#define MA35D03F864C_1_PID	0x82U
+#define MA35D03FH64C_1_PID	0x83U
+#define MA35D03FI64C_1_PID	0x84U
+
+#define MA35D0_DDR_PID_MASK           0x00FF0000U
+#define MA35D0_DDR_PID_SHIFT          16U
+
+#define MA35D0_DDR_CFG_LIST(_) \
+	_(MA35D03F764C_1, "MA35D03F764C DDR2 128MB") \
+	_(MA35D03F864C_1, "MA35D03F864C DDR3 256MB") \
+	_(MA35D03FH64C_1, "MA35D03FH64C DDR3 128MB") \
+	_(MA35D03FI64C_1, "MA35D03FI64C DDR3 256MB")
+
+#define APPLY_DDR_CFG(_name, _desc) \
+	case _name##_PID: \
+		INFO("DDR setting: %s\n", _desc); \
+		ma35d0_ddr_setting(_name, sizeof(_name)/sizeof(uint32_t)); \
+		break;
+
+#endif
+
 #endif /* MA35D0_DDR_H */
