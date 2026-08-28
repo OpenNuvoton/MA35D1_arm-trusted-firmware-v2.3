@@ -24,6 +24,7 @@
 #include <lib/utils.h>
 #include "ma35d1_private.h"
 
+#define MA35D1_DPD_LOWEST_POWER		0
 #define DO_DDR_POWER_DOWN		1
 #define MA35D1_DDR_HW_POWER_DOWN	0
 
@@ -51,6 +52,15 @@ static uintptr_t ma35d1_sec_entrypoint;
 #define CLK_BASE 0x40460200
 #define PWRCTL 0x0
 #define STATUS 0x50
+
+#if MA35D1_DPD_LOWEST_POWER
+#include "rtp_pd.c"
+
+static uint32_t backup_CLK_SYSCLK0, backup_CLK_SYSCLK1,
+		backup_CLK_APBCLK0, backup_CLK_APBCLK1, backup_CLK_APBCLK2,
+		backup_CLK_PLL3CTL1, backup_CLK_PLL5CTL1;
+static int wdt_reg_save;
+#endif
 
 static __inline void ma35d1_UnlockReg(void)
 {
@@ -271,6 +281,48 @@ void ma35d1_deep_power_down_sw(void)
 {
 	ma35d1_UnlockReg();
 
+#if MA35D1_DPD_LOWEST_POWER  // 2025.10.21; ychuang3 DPD current
+
+	backup_CLK_SYSCLK0 = mmio_read_32(CLK_SYSCLK0);
+	backup_CLK_SYSCLK1 = mmio_read_32(CLK_SYSCLK1);
+
+	backup_CLK_APBCLK0 = mmio_read_32(CLK_APBCLK0);
+	backup_CLK_APBCLK1 = mmio_read_32(CLK_APBCLK1);
+	backup_CLK_APBCLK2 = mmio_read_32(CLK_APBCLK2);
+
+	backup_CLK_PLL3CTL1 = mmio_read_32(CLK_PLL3CTL1);
+	backup_CLK_PLL5CTL1 = mmio_read_32(CLK_PLL5CTL1);
+
+	/* disable HUSBH1EN, HUSBH0EN (-9.5) */
+	mmio_write_32(CLK_SYSCLK0, mmio_read_32(CLK_SYSCLK0) & ~0x600000);
+
+	/* disable SDH1EN (-1)  */
+	mmio_write_32(CLK_SYSCLK0, mmio_read_32(CLK_SYSCLK0) & ~0x20000);
+
+	/* disable DBGCKEN, TRACKEN, WHCCKEN, PDMACKEN (-6.5) */
+	mmio_write_32(CLK_SYSCLK1, mmio_read_32(CLK_SYSCLK1) & ~0x187f);
+
+	/* disable all GPxCKEN (-6.5) */
+	mmio_write_32(CLK_SYSCLK1, mmio_read_32(CLK_SYSCLK1) & ~0x3fef0000);
+
+	/* disable all UARTCKEN (-1) */
+	mmio_write_32(CLK_APBCLK0, mmio_read_32(CLK_APBCLK0) & ~0x1fffe000);
+
+	/* disable EPWM1CKEN, WDT2CKEN, WDT0CKEN, QSPI0CKEN, I2C2CKEN, I2C0CKEN (-1.5) */
+	mmio_write_32(CLK_APBCLK1, mmio_read_32(CLK_APBCLK1) & ~0x2050045);
+
+	/* disable EADCCKEN, ADCCKEN, I2S0CKEN (-0.5) */
+	mmio_write_32(CLK_APBCLK2, mmio_read_32(CLK_APBCLK2) & ~0x3000001);
+
+	mmio_write_32(CLK_PLL3CTL1, mmio_read_32(CLK_PLL3CTL1) | 0x1);
+
+	//mmio_write_32(CLK_PLL4CTL1, mmio_read_32(CLK_PLL4CTL1) | 0x1);
+
+	mmio_write_32(CLK_PLL5CTL1, mmio_read_32(CLK_PLL5CTL1) | 0x1);
+
+	// All above applied: 57 mA ==> 17 mA
+#endif
+
 	// INFO("ma35d1_deep_power_down_sw - SYS_RSTDEBCTL = 0x%x\r\n", mmio_read_32(SYS_BASE + 0x18));
 	//[11:8]=
 
@@ -297,6 +349,20 @@ void ma35d1_deep_power_down_sw(void)
 	mmio_write_32(CLK_PWRCTL, mmio_read_32(CLK_PWRCTL) | 0x00E0E800); // Turn on auto off bits...
 #else
 	mmio_write_32(CLK_PWRCTL, mmio_read_32(CLK_PWRCTL) | 0x00A08800); // Turn on auto off bits...
+#endif
+
+#if MA35D1_DPD_LOWEST_POWER
+	/* Do RTP power down */
+	mmio_write_32(SYS_IPRST0, 0x8);
+	mmio_write_32(CLK_SYSCLK0, mmio_read_32(CLK_SYSCLK0) | 0x2); /* Enable RTP clock */
+	memcpy((void *)0x24000000, rtp_pd, sizeof(rtp_pd));
+	mmio_write_32(SYS_IPRST0, mmio_read_32(SYS_IPRST0) & ~0x8);
+
+	/* Cortex A35 CPU Clock Source select HXT - prevent from halt on reset */
+	mmio_write_32(CLK_CLKSEL0, mmio_read_32(CLK_CLKSEL0) & ~0x3);
+
+	// RTPPDEN=1
+	mmio_write_32(SYS_BASE + PMUCR, mmio_read_32(SYS_BASE + PMUCR) | (1 << 24));
 #endif
 
 	ma35d1_LockReg();
@@ -365,6 +431,14 @@ static void ma35d1_pwr_domain_suspend(const psci_power_state_t *target_state)
 #else
 	ma35d1_deep_power_down_sw();
 #endif
+
+#if MA35D1_DPD_LOWEST_POWER /* recover registers */
+	ma35d1_UnlockReg();
+	mmio_write_32(0x40440008, 0x00005AA5);
+	wdt_reg_save = mmio_read_32(0x40440000);
+	mmio_write_32(0x40440000, mmio_read_32(0x40440000) & ~(0x01 << 1));
+	ma35d1_LockReg();
+#endif
 }
 
 static void ma35d1_pwr_domain_on_finish(const psci_power_state_t *target_state)
@@ -382,9 +456,27 @@ int ma35d1_validate_ns_entrypoint(uintptr_t ns_entrypoint)
 	return PSCI_E_SUCCESS;
 }
 
-static void ma35d1_pwr_domain_suspend_finish(const
-			psci_power_state_t * target_state)
+static void ma35d1_pwr_domain_suspend_finish(const psci_power_state_t * target_state)
 {
+#if MA35D1_DPD_LOWEST_POWER /* recover registers */
+	ma35d1_UnlockReg();
+
+	mmio_write_32(0x40440000, wdt_reg_save);
+	mmio_write_32(0x40440008, 0x00005AA5);
+
+	mmio_write_32(CLK_PLL5CTL1, backup_CLK_PLL5CTL1);
+	mmio_write_32(CLK_PLL3CTL1, backup_CLK_PLL3CTL1);
+
+	mmio_write_32(CLK_APBCLK0, backup_CLK_APBCLK0);
+	mmio_write_32(CLK_APBCLK1, backup_CLK_APBCLK1);
+	mmio_write_32(CLK_APBCLK2, backup_CLK_APBCLK2);
+
+	mmio_write_32(CLK_SYSCLK0, backup_CLK_SYSCLK0);
+	mmio_write_32(CLK_SYSCLK1, backup_CLK_SYSCLK1);
+
+	mmio_write_32(CLK_CLKSEL0, (mmio_read_32(CLK_CLKSEL0) & ~0x3) | 0x1);
+#endif
+
 #if !MA35D1_DDR_HW_POWER_DOWN && DO_DDR_POWER_DOWN
 	ma35d1_ddr_wk();
 #endif
