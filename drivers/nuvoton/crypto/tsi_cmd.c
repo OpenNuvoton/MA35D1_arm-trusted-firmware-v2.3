@@ -728,7 +728,7 @@ int TSI_run_sha(int inswap, int outswap, int mode_sel, int hmac,
 	inv_dcache_range((uintptr_t)dest_addr, 32);
 	ret = TSI_Open_Session(C_CODE_SHA, &sid);
 	if (ret != 0)
-		goto err_out;
+		return ret;
 
 	ret = TSI_SHA_Start(sid, inswap, outswap, mode_sel, hmac, mode, keylen, ks, ks_num);
 	if (ret != 0)
