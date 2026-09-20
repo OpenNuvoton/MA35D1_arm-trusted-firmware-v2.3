@@ -8,6 +8,7 @@
 #define MA35D1_DEF_H
 
 #include <lib/utils_def.h>
+#include <ma35d1_version_info.h>
 
 #ifndef MA35D1_CLUSTER_COUNT
 #define MA35D1_CLUSTER_COUNT		1
@@ -57,7 +58,12 @@
 #define MA35D1_DTB_SIZE			U(0x00002000)
 
 #define MA35D1_BL31_BASE		U(0x28025000)
-#define MA35D1_BL31_SIZE		U(0x0001A000)	/* 0x2803C000 is reserved to IBR */
+/*
+ * Keep the version-info SRAM and the following TSI buffer out of BL31.
+ * The existing platform map also notes IBR usage from 0x2803C000;
+ * IBR-internal allocations are not described in this source tree.
+ */
+#define MA35D1_BL31_SIZE		(MA35D1_VERSION_INFO_BASE - MA35D1_BL31_BASE)
 
 #define MA35D1_BL32_SIZE		U(0x00200000)
 

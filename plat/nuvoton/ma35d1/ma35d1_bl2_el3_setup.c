@@ -13,6 +13,7 @@
 #include "ma35d1_private.h"
 #include <ma35d1_crypto.h>
 #include <ma35d1_otp_fuse.h>
+#include <ma35d1_version_info.h>
 #include <tsi_cmd.h>
 
 #define UART_DAT                U(0x40700000)
@@ -26,20 +27,19 @@
  * is released; it is compared against the OTP fuse counter to detect and
  * reject rollback to an older BL2 image.
  *
- * Range: 0 ~ OTP_FUSE_CTR_MAX_VALUE (704, see ma35d1_otp_fuse.h).
+ * Range: 0 ~ OTP_BL2_CTR_MAX_VALUE (352, see ma35d1_otp_fuse.h).
  *   - Lower bound is 0 because the OTP fuse counter itself starts at 0
  *     (no bits blown) and can never be negative.
- *   - Upper bound is 704 because the counter is stored as a "bit-walk"
- *     code across the 22 dedicated OTP words (0x120 ~ 0x174), 32 bits
+ *   - Upper bound is 352 because the counter is stored as a "bit-walk"
+ *     code across the 11 dedicated OTP words (0x14C ~ 0x174), 32 bits
  *     each, and every increment permanently blows exactly one more OTP
- *     bit. Since OTP bits can only go 0 -> 1 and never be reset, 704 is
+ *     bit. Since OTP bits can only go 0 -> 1 and never be reset, 352 is
  *     the maximum number of times this counter can ever be raised for
- *     the lifetime of the chip; once it reaches 704 no further version
+ *     the lifetime of the chip; once it reaches 352 no further version
  *     bump can be recorded and MA35D1_BL2_FW_VERSION_COUNT must not
  *     exceed it.
  */
-#define MA35D1_BL2_FW_VERSION_STRING	"ma35-tfa-v1.2.0"
-#define MA35D1_BL2_FW_VERSION_COUNT	1U
+#define MA35D1_BL2_FW_VERSION_COUNT	0U
 
 void ma35d1_tsi_init(void);
 
@@ -304,24 +304,24 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 #if OTP_ANTI_ROLLBACK
 	{
 		uint32_t otp_ctr;
+		uint32_t fip_otp_ctr;
+		uint32_t linux_otp_ctr;
 
 		// ma35d1_otp_dump_secure_region();
 
-		printf("BL2 firmware version: %s (count=%u)\n",
-		       MA35D1_BL2_FW_VERSION_STRING, MA35D1_BL2_FW_VERSION_COUNT);
+		printf("BL2 firmware version: count=%d\n", MA35D1_BL2_FW_VERSION_COUNT);
 
-		if (ma35d1_otp_fuse_ctr_read(&otp_ctr) != 0) {
-			/*
-			 * Fail-secure: if the current counter cannot be
-			 * verified, the rollback check cannot be trusted,
-			 * so refuse to continue booting rather than silently
-			 * skipping the check.
-			 */
-			ERROR("BL2 firmware version: unable to read OTP fuse counter, halting\n");
+		/* Keep magic invalid until all SRAM fields have been written. */
+		mmio_write_32(MA35D1_VERSION_INFO_BASE +
+			      MA35D1_VERSION_INFO_MAGIC_OFFSET, 0U);
+
+		if ((ma35d1_otp_fuse_ctr_read(&otp_ctr) != 0) ||
+		    (ma35d1_otp_fip_ctr_read(&fip_otp_ctr) != 0) ||
+		    (ma35d1_otp_kernel_ctr_read(&linux_otp_ctr) != 0)) {
+			/* OTP failures remain fatal for anti-rollback. */
+			ERROR("Version info: unable to read OTP counters, halting\n");
 			panic();
 		}
-
-		printf("OTP fuse counter: %u\n", otp_ctr);
 
 		if (MA35D1_BL2_FW_VERSION_COUNT < otp_ctr) {
 			/*
@@ -343,6 +343,7 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 			 * treat it as fatal rather than continuing to boot.
 			 */
 			if (ma35d1_otp_fuse_ctr_set(MA35D1_BL2_FW_VERSION_COUNT) == 0) {
+				otp_ctr = MA35D1_BL2_FW_VERSION_COUNT;
 				printf("OTP fuse counter updated to %u\n",
 				       MA35D1_BL2_FW_VERSION_COUNT);
 			} else {
@@ -351,6 +352,22 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 				panic();
 			}
 		}
+		printf("OTP counter => BL2: %u, FIP: %u, Linux: %u\n",
+		       otp_ctr, fip_otp_ctr, linux_otp_ctr);
+
+		mmio_write_32(MA35D1_VERSION_INFO_BASE +
+			      MA35D1_VERSION_INFO_BL2_IMAGE_OFFSET,
+			      MA35D1_BL2_FW_VERSION_COUNT);
+		mmio_write_32(MA35D1_VERSION_INFO_BASE +
+			      MA35D1_VERSION_INFO_BL2_OTP_OFFSET, otp_ctr);
+		mmio_write_32(MA35D1_VERSION_INFO_BASE +
+			      MA35D1_VERSION_INFO_FIP_OTP_OFFSET, fip_otp_ctr);
+		mmio_write_32(MA35D1_VERSION_INFO_BASE +
+			      MA35D1_VERSION_INFO_LINUX_OTP_OFFSET, linux_otp_ctr);
+		/* Magic is written last to mark all fields as valid. */
+		mmio_write_32(MA35D1_VERSION_INFO_BASE +
+			      MA35D1_VERSION_INFO_MAGIC_OFFSET,
+			      MA35D1_VERSION_INFO_MAGIC);
 	}
 #endif
 
