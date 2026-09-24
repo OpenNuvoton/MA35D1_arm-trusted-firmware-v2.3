@@ -8,9 +8,104 @@
 #include <stdint.h>
 
 #include <common/debug.h>
+#include <lib/mmio.h>
+#include <platform_def.h>
 
 #include <ma35d1_otp_fuse.h>
 #include <tsi_cmd.h>
+
+#define OTP_BASE		0x40350000U
+#define OTP_CTL			(OTP_BASE + 0x000U)
+#define OTP_STS			(OTP_BASE + 0x004U)
+#define OTP_ADDR		(OTP_BASE + 0x008U)
+#define OTP_DATA		(OTP_BASE + 0x00CU)
+
+#define OTP_CTL_START		(1U << 0)
+#define OTP_CTL_PROGRAM		(1U << 4)
+
+#define OTP_STS_BUSY		(1U << 0)
+#define OTP_STS_PFF		(1U << 1)
+#define OTP_STS_ADDRFF		(1U << 2)
+#define OTP_STS_CMDFF		(1U << 4)
+
+#define OTP_BUSY_POLL_LIMIT	12000000U
+
+static int otp_wait_ready(void)
+{
+	uint32_t poll_count = 0;
+
+	while ((mmio_read_32(OTP_STS) & OTP_STS_BUSY) != 0U) {
+		if (poll_count++ > OTP_BUSY_POLL_LIMIT)
+			return -ETIMEDOUT;
+	}
+	return 0;
+}
+
+int ma35d1_otp_read(uint32_t addr, uint32_t *data)
+{
+	uint32_t status;
+	int ret;
+
+	if (data == NULL)
+		return -EINVAL;
+
+	if ((mmio_read_32(SYS_CHIPCFG) & 0x100U) == 0U)
+		return TSI_OTP_Read(addr, data);
+
+	ret = otp_wait_ready();
+	if (ret != 0)
+		return ret;
+
+	mmio_write_32(OTP_STS, OTP_STS_ADDRFF | OTP_STS_CMDFF);
+	mmio_write_32(OTP_ADDR, addr);
+	mmio_write_32(OTP_CTL, OTP_CTL_START);
+
+	ret = otp_wait_ready();
+	if (ret != 0)
+		return ret;
+
+	status = mmio_read_32(OTP_STS);
+	if ((status & (OTP_STS_ADDRFF | OTP_STS_CMDFF)) != 0U) {
+		mmio_write_32(OTP_STS, OTP_STS_ADDRFF | OTP_STS_CMDFF);
+		return -EIO;
+	}
+
+	*data = mmio_read_32(OTP_DATA);
+	return 0;
+}
+
+int ma35d1_otp_program(uint32_t addr, uint32_t data)
+{
+	uint32_t status;
+	int ret;
+
+	if ((mmio_read_32(SYS_CHIPCFG) & 0x100U) == 0U)
+		return TSI_OTP_Program(addr, data);
+
+	ret = otp_wait_ready();
+	if (ret != 0)
+		return ret;
+
+	mmio_write_32(OTP_STS,
+		      OTP_STS_PFF | OTP_STS_ADDRFF | OTP_STS_CMDFF);
+	mmio_write_32(OTP_ADDR, addr);
+	mmio_write_32(OTP_DATA, data);
+	mmio_write_32(OTP_CTL, OTP_CTL_PROGRAM | OTP_CTL_START);
+
+	ret = otp_wait_ready();
+	if (ret != 0)
+		return ret;
+
+	status = mmio_read_32(OTP_STS);
+	if ((status & (OTP_STS_PFF | OTP_STS_ADDRFF |
+		       OTP_STS_CMDFF)) != 0U) {
+		mmio_write_32(OTP_STS,
+			      OTP_STS_PFF | OTP_STS_ADDRFF | OTP_STS_CMDFF);
+		return -EIO;
+	}
+
+	return 0;
+}
 
 #if OTP_ANTI_ROLLBACK
 
@@ -32,7 +127,7 @@ static int otp_fuse_ctr_read(uint32_t low, uint32_t high, uint32_t *ctr)
 	 */
 	for (addr = high; addr >= low;
 	     addr -= OTP_FUSE_CTR_WORD_SIZE) {
-		ret = TSI_OTP_Read(addr, &data);
+		ret = ma35d1_otp_read(addr, &data);
 		if (ret != 0) {
 			ERROR("otp_fuse: read addr 0x%x failed (%d)\n", addr, ret);
 			return ret;
@@ -86,7 +181,7 @@ int ma35d1_otp_fuse_ctr_set(uint32_t new_ctr)
 
 		/* Blow only the next bit; already-set bits stay untouched. */
 		data = (1U << bit_idx);
-		ret = TSI_OTP_Program(addr, data);
+		ret = ma35d1_otp_program(addr, data);
 		if (ret != 0) {
 			ERROR("otp_fuse: program addr 0x%x bit %u failed (%d)\n",
 			      addr, bit_idx, ret);
@@ -107,7 +202,7 @@ void ma35d1_otp_dump_secure_region(void)
 
 	for (addr = OTP_BL2_CTR_ADDR_LOW; addr <= OTP_BL2_CTR_ADDR_HIGH;
 	     addr += OTP_FUSE_CTR_WORD_SIZE) {
-		ret = TSI_OTP_Read(addr, &data);
+		ret = ma35d1_otp_read(addr, &data);
 		if (ret != 0) {
 			printf("  0x%03x: <read error %d>\n", addr, ret);
 			continue;

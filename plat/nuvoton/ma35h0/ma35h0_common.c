@@ -346,7 +346,7 @@ void plat_ma35h0_init(void)
 
 	/* enable CRYPTO */
 	/* initial crypto engine and ks clock */
-	mmio_write_32(TSI_CLK_AHBCLK, mmio_read_32(TSI_CLK_AHBCLK) | 0x5000);
+	mmio_write_32(TSI_CLK_AHBCLK, mmio_read_32(TSI_CLK_AHBCLK) | 0x7000);
 
 	/* initial trng clock */
 	mmio_write_32(TSI_CLK_APBCLK1, mmio_read_32(TSI_CLK_APBCLK1) | 0x2000000);

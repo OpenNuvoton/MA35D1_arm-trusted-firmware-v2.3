@@ -187,7 +187,7 @@ static int EnterRMAState(void)
 			}
 		}
 		/* PLM = RMA */
-		status = TSI_OTP_Program(0x108, 0x7);
+		status = ma35d1_otp_program(0x108, 0x7);
 		TSI_Reset();
 		if (status != 0)
 			return status;
@@ -270,7 +270,7 @@ static int EnterRMAState(void)
 			return 1;
 		}
 		/* PLM = RMA */
-		status = TSI_OTP_Program(0x108, 0x7);
+		status = ma35d1_otp_program(0x108, 0x7);
 		TSI_Reset();
 		if (status != 0)
 			return status;
@@ -293,9 +293,8 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 	ma35d1_config_setup();
 
 	/*
-	 * TSI commands (used by ma35d1_tsi_init() and the OTP fuse APIs
-	 * below) wait for ack via mdelay(), so the delay timer must be
-	 * initialized before any TSI command is issued.
+	 * TSI commands wait for acknowledgements via mdelay(), so initialize
+	 * the delay timer before issuing any TSI command.
 	 */
 	generic_delay_timer_init();
 

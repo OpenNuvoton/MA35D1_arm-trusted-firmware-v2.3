@@ -47,6 +47,10 @@
 #define OTP_KERNEL_CTR_MAX_VALUE	(OTP_KERNEL_CTR_WORD_COUNT * \
 					 OTP_FUSE_CTR_BITS_PER_WORD)
 
+/* Select the TSI or direct-controller path according to SYS_CHIPCFG[8]. */
+int ma35d1_otp_read(uint32_t addr, uint32_t *data);
+int ma35d1_otp_program(uint32_t addr, uint32_t data);
+
 /*
  * Read back the current BL2 anti-rollback counter value.
  *
