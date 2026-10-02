@@ -488,6 +488,8 @@ void ma35d1_tsi_init(void)
 		/* enable WHC1 clock */
 		mmio_write_32(CLK_SYSCLK1, (mmio_read_32(CLK_SYSCLK1) | 0x20));
 
+		TSI_Reset();
+
 		ret = TSI_Get_Version(&version_code);
 		if (ret != ST_SUCCESS) {
 			/* TSI is not ready. Init TSI. */
