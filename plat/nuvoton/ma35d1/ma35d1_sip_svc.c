@@ -75,7 +75,7 @@ static int32_t ma35d1_set_cpu_clock(int cpu_freq)
 		break;
 	case CPU_PLL_650:
 		index = 2;
-		INFO("CA-PLL is 600 MHz\n");
+		INFO("CA-PLL is 650 MHz\n");
 		break;
 	case CPU_PLL_600:
 		index = 3;
@@ -187,6 +187,10 @@ uintptr_t sip_smc_handler(uint32_t smc_fid,
 		reg = (mmio_read_32(SYS_BA) >> 16) & 0xff;
 		if (reg == 0xa1 || reg == 0x81 || reg == 0x82)
 			SMC_RET1(handle, 1);
+		if (reg == 0x90 && (uint32_t)x1 > 650) {
+			WARN("CPU clock %ld MHz exceeds MA35D05K limit\n", x1);
+			SMC_RET1(handle, 1);
+		}
 
 		ret = ma35d1_set_cpu_clock(CPU_CLK);
 		if (ret == 1) {
