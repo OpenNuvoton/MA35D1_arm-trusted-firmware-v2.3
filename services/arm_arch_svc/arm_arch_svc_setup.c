@@ -131,6 +131,9 @@ static uintptr_t arm_arch_svc_smc_handler(uint32_t smc_fid,
 		 */
 		SMC_RET0(handle);
 #endif
+	case SMCCC_ARCH_SOC_ID64:
+		/* SMC64 SOC_ID is not implemented; Linux falls back to SOC_ID */
+		SMC_RET1(handle, SMC_UNK);
 	default:
 		WARN("Unimplemented Arm Architecture Service Call: 0x%x \n",
 			smc_fid);

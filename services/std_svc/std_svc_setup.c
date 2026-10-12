@@ -155,6 +155,15 @@ static uintptr_t std_svc_smc_handler(uint32_t smc_fid,
 		/* Return the version of current implementation */
 		SMC_RET2(handle, STD_SVC_VERSION_MAJOR, STD_SVC_VERSION_MINOR);
 
+	/*
+	 * Feature probes issued by Linux at boot: TRNG_VERSION (0x84000050)
+	 * and Arm CCA RSI_ABI_VERSION (0xc4000190). Not implemented; reply
+	 * "not supported" per SMCCC without warning.
+	 */
+	case 0x84000050U:
+	case 0xc4000190U:
+		SMC_RET1(handle, SMC_UNK);
+
 	default:
 		WARN("Unimplemented Standard Service Call: 0x%x \n", smc_fid);
 		SMC_RET1(handle, SMC_UNK);
