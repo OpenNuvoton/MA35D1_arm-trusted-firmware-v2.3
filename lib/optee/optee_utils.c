@@ -178,7 +178,12 @@ int parse_optee_header(entry_point_info_t *header_ep,
 #else
 		header_ep->args.arg0 = MODE_RW_32;
 #endif
+		#if MA35_ANTI_ROLLBACK_AB_BOOT
+		return -1;
+		#else
 		return 0;
+		#endif
+
 	}
 
 	/* Parse OPTEE image */
