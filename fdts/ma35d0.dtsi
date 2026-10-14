@@ -57,6 +57,7 @@
 
 		/* spi information */
 		spinor-image-offset = <0x40000>;
+		spinor-image-backup-offset = <0x40000>;
 		spi-quad-read-cmd = <0x6B>;
 		spi-status-read-cmd = <0x05>;
 		spi-status-write-cmd = <0x01>;
@@ -67,6 +68,7 @@
 
 		/* spi-nand information */
 		spinand-image-offset = <0x100000>;
+		spinand-image-backup-offset = <0x1d00000>;
 		spinand-page-size = <2048>;
 		spinand-oob-size = <64>;
 		spinand-page-count = <64>;
@@ -85,6 +87,7 @@
 		nand-page-count = <64>;
 		nand-block-count = <8192>;
 		nand-image-offset = <0x100000>;
+		nand-image-backup-offset = <0x1d00000>;
 	};
 
 	sdhci0: sdhci@40180000 {
@@ -92,6 +95,7 @@
 		bus-width = <4>;
 		/* sdhc information */
 		mmc-image-offset = <0xc0000>;
+		mmc-image-backup-offset = <0x24c0000>;
 	};
 
 	sdhci1: sdhci@40190000 {
@@ -99,6 +103,7 @@
 		bus-width = <4>;
 		/* sdhc information */
 		mmc-image-offset = <0xc0000>;
+		mmc-image-backup-offset = <0x24c0000>;
 	};
 
 	sspcc: sspcc@404F0000 {

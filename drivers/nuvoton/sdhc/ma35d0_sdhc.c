@@ -45,6 +45,7 @@ struct mmc {
 	int high_capacity;
 	unsigned int csd[4];
 	long offset;	/* image offset in nand */
+	long offset_backup;
 	int bus_width;
 };
 
@@ -604,6 +605,9 @@ static void ma35d0_sdhc_setup(struct mmc *mmc)
 	}
 
 	mmc->offset = fdt_read_uint32_default(fdt, node, "mmc-image-offset", 0);
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	mmc->offset_backup = fdt_read_uint32_default(fdt, node, "mmc-image-backup-offset", 0);
+	#endif
 	mmc->bus_width = fdt_read_uint32_default(fdt, node, "bus-width", 1);
 
 	ma35d0_sdhc_hw_init(mmc);
@@ -632,7 +636,7 @@ static struct io_block_dev_spec sdhc_dev_spec = {
 };
 
 int ma35d0_sdhc_init(struct io_block_dev_spec **block_dev_spec,
-				   long *offset, int sdhc)
+				   struct io_offset *offset, int sdhc)
 {
 	if (sdhc == 0) {
 		mmio_write_32(CLK_CLKSEL0,
@@ -659,7 +663,10 @@ int ma35d0_sdhc_init(struct io_block_dev_spec **block_dev_spec,
 	}
 
 	ma35d0_sdhc_setup(&ma35d0_mmc);
-	*offset = ma35d0_mmc.offset;
+	offset->offset = ma35d0_mmc.offset;
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	offset->offset_backup = ma35d0_mmc.offset_backup;
+	#endif
 
 	*block_dev_spec = &sdhc_dev_spec;
 

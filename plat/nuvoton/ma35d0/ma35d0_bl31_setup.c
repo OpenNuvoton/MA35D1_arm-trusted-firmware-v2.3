@@ -14,6 +14,7 @@
 #include <drivers/arm/gicv2.h>
 
 #include <lib/debugfs.h>
+#include <lib/mmio.h>
 
 #include "ma35d0_private.h"
 
@@ -30,6 +31,18 @@ void bl31_early_platform_setup2(u_register_t arg0,
 {
 	/* Initialize the platform config for future decision making */
 	ma35d0_config_setup();
+
+#if MA35_ANTI_ROLLBACK_AB_BOOT
+	NOTICE("BL31: version %d\n", MA35_BL31_VERSION);
+
+	if (MA35_BL31_VERSION < mmio_read_32(0x2803EC24)) {
+		ERROR("BL31 firmware version rollback detected, halting (version=%d, min=%d)\n",
+		      MA35_BL31_VERSION, mmio_read_32(0x2803EC24));
+		panic();
+	}
+
+	mmio_write_32(0x2803EC08, MA35_BL31_VERSION);
+#endif
 
 	/*************************************************************/
 	/*

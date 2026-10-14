@@ -30,6 +30,7 @@ struct ma35d0_nand_info {
 	int max_bit_corr;
 	long size;	/* nand total size */
 	long offset;	/* image offset in nand */
+	long offset_backup;
 };
 
 struct ma35d0_nand_info ma35d0_nand;
@@ -510,6 +511,9 @@ static void ma35d0_nand_setup(struct ma35d0_nand_info *nand)
 	count = fdt_read_uint32_default(fdt, node, "nand-block-count", 256) / 1024;
 	nand->size = (nand->page_size / 1024) * nand->pages_per_block * count;
 	nand->offset = fdt_read_uint32_default(fdt, node, "nand-image-offset", 0);
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	nand->offset_backup = fdt_read_uint32_default(fdt, node, "nand-image-backup-offset", 0);
+	#endif
 
 	INFO("NAND: Size %liMB, Page %i, pages per block %i, oob size %i, bit correct %i\n", nand->size, nand->page_size, 
 		nand->pages_per_block, nand->oob_size, nand->max_bit_corr);
@@ -624,11 +628,13 @@ static struct io_block_dev_spec nand_dev_spec = {
 	/* fill .block_size at run-time */
 };
 
-int ma35d0_nand_init(struct io_block_dev_spec **block_dev_spec, long *offset)
+int ma35d0_nand_init(struct io_block_dev_spec **block_dev_spec, struct io_offset *offset)
 {
 	ma35d0_nand_setup(&ma35d0_nand);
-	*offset = ma35d0_nand.offset;
-
+	offset->offset = ma35d0_nand.offset;
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	offset->offset_backup = ma35d0_nand.offset_backup;
+	#endif
 	nand_dev_spec.block_size = ma35d0_nand.page_size;
 
 	*block_dev_spec = &nand_dev_spec;

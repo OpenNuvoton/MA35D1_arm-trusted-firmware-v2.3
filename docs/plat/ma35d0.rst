@@ -71,6 +71,15 @@ Build Procedure
 
        CROSS_COMPILE=aarch64-linux-gnu- make PLAT=ma35d0  (bl2, bl31, DTB)
 
+   BL2/BL31 firmware version:
+
+       BL2 and BL31 each embed a version string (default "1") that is
+       printed via NOTICE at boot (e.g. "BL2: version 1"). Override it
+       on the make command line with MA35_BL2_VERSION / MA35_BL31_VERSION:
+
+       CROSS_COMPILE=aarch64-linux-gnu- make PLAT=ma35d0 \
+		MA35_BL2_VERSION=1 MA35_BL31_VERSION=1 bl2 bl31
+
 	CROSS_COMPILE=aarch64-linux-gnu- make PLAT=ma35d0 \
 		NEED_BL31=yes bl31 NEED_BL32=yes BL32=fiptool_images/tee-header_v2.bin \
 		BL32_EXTRA1=fiptool_images/tee-pager_v2.bin BL33=fiptool_images/u-boot.bin \

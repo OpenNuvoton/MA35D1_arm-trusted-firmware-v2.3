@@ -26,11 +26,22 @@ $(eval $(call add_define,MA35H0_MAX_CPUS_PER_CLUSTER))
 $(eval $(call add_define,MA35H0_MAX_PE_PER_CPU))
 $(eval $(call add_define,MA35H0_INTERCONNECT_DRIVER))
 
+OTP_ANTI_ROLLBACK ?= 0
+$(eval $(call add_define,OTP_ANTI_ROLLBACK))
+
 DDR_AUTO_DETECT ?= 0
 $(eval $(call add_define,DDR_AUTO_DETECT))
 
 FIP_DE_AES ?= 0
 $(eval $(call add_define,FIP_DE_AES))
+
+MA35_ANTI_ROLLBACK_AB_BOOT ?= 0
+$(eval $(call add_define,MA35_ANTI_ROLLBACK_AB_BOOT))
+
+MA35_BL2_VERSION	?= 0
+MA35_BL31_VERSION	?= 0
+$(eval $(call add_define,MA35_BL2_VERSION))
+$(eval $(call add_define,MA35_BL31_VERSION))
 
 MA35H0_PMIC ?= 1
 $(eval $(call add_define,MA35H0_PMIC))

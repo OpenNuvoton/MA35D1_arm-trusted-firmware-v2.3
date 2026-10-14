@@ -28,6 +28,7 @@ struct ma35h0_qspi_info {
 	int pages_per_block;
 	long size;	/* spinand total size */
 	long offset;	/* image offset in spinand */
+	long offset_backup;
 	unsigned char   is_quad;
 	unsigned char   QuadReadCmd;
 	unsigned char   ReadStatusCmd;
@@ -421,7 +422,9 @@ static void ma35h0_spinand_setup(struct ma35h0_qspi_info *spinand)
 	spinand->oob_size = fdt_read_uint32_default(fdt, node, "spinand-oob-size", 0);
 	spinand->size = spinand->page_size * spinand->pages_per_block * fdt_read_uint32_default(fdt, node, "spinand-block-count", 256);
 	spinand->offset = fdt_read_uint32_default(fdt, node, "spinand-image-offset", 0);
-
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	spinand->offset_backup = fdt_read_uint32_default(fdt, node, "spinand-image-backup-offset", 0);
+	#endif
 	spinand->QuadReadCmd = fdt_read_uint32_default(fdt, node, "spi-quad-read-cmd", 0);
 	spinand->dummybyte1 = fdt_read_uint32_default(fdt, node, "spi-dummy1", 0);
 	spinand->dummybyte2 = fdt_read_uint32_default(fdt, node, "spi-dummy2", 0);
@@ -666,6 +669,9 @@ static void ma35h0_spinor_setup(struct ma35h0_qspi_info *spinor)
 	}
 
 	spinor->offset = fdt_read_uint32_default(fdt, node, "spinor-image-offset", 0);
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	spinor->offset_backup = fdt_read_uint32_default(fdt, node, "spinor-image-backup-offset", 0);
+	#endif
 	spinor->QuadReadCmd = fdt_read_uint32_default(fdt, node, "spi-quad-read-cmd", 0);
 	spinor->ReadStatusCmd = fdt_read_uint32_default(fdt, node, "spi-status-read-cmd", 0);
 	spinor->WriteStatusCmd = fdt_read_uint32_default(fdt, node, "spi-status-write-cmd", 0);
@@ -701,11 +707,14 @@ static struct io_block_dev_spec spinand_dev_spec = {
 	/* fill .block_size at run-time */
 };
 
-int ma35h0_spinand_init(struct io_block_dev_spec **block_dev_spec, long *offset, int is_quad)
+int ma35h0_spinand_init(struct io_block_dev_spec **block_dev_spec, struct io_offset *offset, int is_quad)
 {
 	ma35h0_qspi.is_quad = is_quad;
 	ma35h0_spinand_setup(&ma35h0_qspi);
-	*offset = ma35h0_qspi.offset;
+	offset->offset = ma35h0_qspi.offset;
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	offset->offset_backup = ma35h0_qspi.offset_backup;
+	#endif
 
 	spinand_dev_spec.block_size = ma35h0_qspi.page_size;
 
@@ -737,12 +746,14 @@ static struct io_block_dev_spec spinor_dev_spec = {
 	.block_size = SPINOR_BLOCK_SIZE,
 };
 
-int ma35h0_spinor_init(struct io_block_dev_spec **block_dev_spec, long *offset, int is_quad)
+int ma35h0_spinor_init(struct io_block_dev_spec **block_dev_spec, struct io_offset *offset, int is_quad)
 {
 	ma35h0_qspi.is_quad = is_quad;
 	ma35h0_spinor_setup(&ma35h0_qspi);
-	*offset = ma35h0_qspi.offset;
-
+	offset->offset = ma35h0_qspi.offset;
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	offset->offset_backup = ma35h0_qspi.offset_backup;
+	#endif
 	*block_dev_spec = &spinor_dev_spec;
 
 	return 0;

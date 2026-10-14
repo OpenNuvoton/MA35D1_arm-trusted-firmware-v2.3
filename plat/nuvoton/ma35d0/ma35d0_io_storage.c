@@ -22,10 +22,10 @@
 
 //#define NVT_FIP_MMAP
 
-int ma35d0_nand_init(struct io_block_dev_spec **block_dev_spec, long *offset);
-int ma35d0_spinand_init(struct io_block_dev_spec **block_dev_spec, long *offset, int is_quad);
-int ma35d0_spinor_init(struct io_block_dev_spec **block_dev_spec, long *offset, int is_quad);
-int ma35d0_sdhc_init(struct io_block_dev_spec **block_dev_spec, long *offset, int sdhc);
+int ma35d0_nand_init(struct io_block_dev_spec **block_dev_spec, struct io_offset *offset);
+int ma35d0_spinand_init(struct io_block_dev_spec **block_dev_spec, struct io_offset *offset, int is_quad);
+int ma35d0_spinor_init(struct io_block_dev_spec **block_dev_spec, struct io_offset *offset, int is_quad);
+int ma35d0_sdhc_init(struct io_block_dev_spec **block_dev_spec, struct io_offset *offset, int sdhc);
 
 /* IO devices */
 static const io_dev_connector_t *fip_dev_con;
@@ -34,10 +34,14 @@ static uintptr_t fip_dev_handle;
 #ifndef NVT_FIP_MMAP
 static const io_dev_connector_t *backend_dev_con;
 static uintptr_t backend_dev_handle;
-
+#if MA35_ANTI_ROLLBACK_AB_BOOT
+static size_t offset_backup;
+extern int is_fip_backup;
+#endif
 static io_block_spec_t fip_block_spec = {
 	.length = MA35D0_FIP_SIZE
 };
+
 #else
 static const io_dev_connector_t *memmap_dev_con;
 static uintptr_t memmap_dev_handle;
@@ -46,6 +50,7 @@ static const io_block_spec_t fip_block_spec = {
 	.offset = MA35D0_FIP_BASE,
 	.length = MA35D0_FIP_SIZE
 };
+
 #endif
 
 static const io_uuid_spec_t bl31_uuid_spec = {
@@ -228,56 +233,64 @@ static int ma35d0_io_block_setup(struct io_block_dev_spec *block_dev_spec)
 static int ma35d0_io_sdhc_setup(int sdhc)
 {
 	struct io_block_dev_spec *block_dev_spec;
-	long offset;
+	struct io_offset offset;
 	int ret;
 
 	ret = ma35d0_sdhc_init(&block_dev_spec, &offset, sdhc);
 	if (ret)
 		return ret;
-	fip_block_spec.offset = offset;
-
+	fip_block_spec.offset = offset.offset;
+#if MA35_ANTI_ROLLBACK_AB_BOOT
+	offset_backup = offset.offset_backup;
+#endif
 	return ma35d0_io_block_setup(block_dev_spec);
 }
 
 static int ma35d0_io_nand_setup(void)
 {
 	struct io_block_dev_spec *block_dev_spec;
-	long offset;
+	struct io_offset offset;
 	int ret;
 
 	ret = ma35d0_nand_init(&block_dev_spec, &offset);
 	if (ret)
 		return ret;
-	fip_block_spec.offset = offset;
-
+	fip_block_spec.offset = offset.offset;
+#if MA35_ANTI_ROLLBACK_AB_BOOT
+	offset_backup = offset.offset_backup;
+#endif
 	return ma35d0_io_block_setup(block_dev_spec);
 }
 
 static int ma35d0_io_spinand_setup(int is_quad)
 {
 	struct io_block_dev_spec *block_dev_spec;
-	long offset;
+	struct io_offset offset;
 	int ret;
 
 	ret = ma35d0_spinand_init(&block_dev_spec, &offset, is_quad);
 	if (ret)
 		return ret;
-	fip_block_spec.offset = offset;
-
+	fip_block_spec.offset = offset.offset;
+#if MA35_ANTI_ROLLBACK_AB_BOOT
+	offset_backup = offset.offset_backup;
+#endif
 	return ma35d0_io_block_setup(block_dev_spec);
 }
 
 static int ma35d0_io_spinor_setup(int is_quad)
 {
 	struct io_block_dev_spec *block_dev_spec;
-	long offset;
+	struct io_offset offset;
 	int ret;
 
 	ret = ma35d0_spinor_init(&block_dev_spec, &offset, is_quad);
 	if (ret)
 		return ret;
-	fip_block_spec.offset = offset;
-
+	fip_block_spec.offset = offset.offset;
+#if MA35_ANTI_ROLLBACK_AB_BOOT
+	offset_backup = offset.offset_backup;
+#endif
 	return ma35d0_io_block_setup(block_dev_spec);
 }
 #endif
@@ -362,6 +375,10 @@ int plat_get_image_source(unsigned int image_id, uintptr_t *dev_handle,
 	assert(image_id < ARRAY_SIZE(policies));
 
 	*dev_handle = *policies[image_id].dev_handle;
+#if MA35_ANTI_ROLLBACK_AB_BOOT
+	if (is_fip_backup && (image_id==FIP_IMAGE_ID))
+		fip_block_spec.offset = offset_backup;
+#endif
 	*image_spec = policies[image_id].image_spec;
 	init_params = policies[image_id].init_params;
 

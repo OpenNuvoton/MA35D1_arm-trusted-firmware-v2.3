@@ -38,7 +38,7 @@ int ma35h0_fip_verify(uintptr_t base, size_t size) {
 
 	image_info = (IMAGE_INFO_T *)image;
 
-	memcpy(image,(unsigned char *)base+size - sizeof(IMAGE_INFO_T), sizeof(IMAGE_INFO_T));
+	memcpy(image,(unsigned char *)base + size - sizeof(IMAGE_INFO_T), sizeof(IMAGE_INFO_T));
 
 	mmio_write_32((TSI_CLK_BASE+0x04), (mmio_read_32(TSI_CLK_BASE+0x04) | 0x5000));
 
@@ -195,26 +195,26 @@ int plat_ma35h0_bl2_handle_scp_bl2(image_info_t *scp_bl2_image_info)
 }
 
 /*******************************************************************************
- * Gets	SPSR for BL32 entry
+ * Gets SPSR for BL32 entry
  ******************************************************************************/
-static uint32_t	ma35h0_get_spsr_for_bl32_entry(void)
+static uint32_t ma35h0_get_spsr_for_bl32_entry(void)
 {
 	return 0;
 }
 
 /*******************************************************************************
- * Gets	SPSR for BL33 entry
+ * Gets SPSR for BL33 entry
  ******************************************************************************/
-static uint32_t	ma35h0_get_spsr_for_bl33_entry(void)
+static uint32_t ma35h0_get_spsr_for_bl33_entry(void)
 {
 	unsigned int mode;
 	uint32_t spsr;
 
-	/* Figure out what mode	we enter the non-secure	world in */
+	/* Figure out what mode we enter the non-secure world in */
 	mode = el_implemented(2) ? MODE_EL2 : MODE_EL1;
 
 	/*
-	 * TODO: Consider the possibility of specifying	the SPSR in
+	 * TODO: Consider the possibility of specifying the SPSR in
 	 * the FIP ToC and allowing the platform to have a say as
 	 * well.
 	 */
@@ -234,11 +234,11 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 	bl_mem_params_node_t *pager_mem_params;
 	bl_mem_params_node_t *paged_mem_params = NULL;
 
-	assert(bl_mem_params !=	NULL);
+	assert(bl_mem_params != NULL);
 
 #if FIP_DE_AES
 	if(ma35h0_fip_verify(bl_mem_params->image_info.image_base,bl_mem_params->image_info.image_size)!=0) {
-		ERROR("ECC authenticate	fail.\n");
+		ERROR("ECC authenticate fail.\n");
 		while(1);
 	}
 	ma35h0_fip_deaes(bl_mem_params->image_info.image_base,bl_mem_params->image_info.image_size);
@@ -254,14 +254,14 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 		err = parse_optee_header(&bl_mem_params->ep_info,
 				&pager_mem_params->image_info,
 				&paged_mem_params->image_info);
-		if (err	!= 0) {
+		if (err != 0) {
 			WARN("OPTEE header parse error.\n");
 		}
 
 		/*
-		 * When	ATF loads the DTB the address of the DTB is passed in
+		 * When ATF loads the DTB the address of the DTB is passed in
 		 * arg2, if an hw config image is present use the base address
-		 * as DTB address an pass it as	arg2
+		 * as DTB address an pass it as arg2
 		 */
 		bl_mem_params->ep_info.args.arg0 = bl_mem_params->ep_info.args.arg1;
 		bl_mem_params->ep_info.args.arg1 = 0;
@@ -273,8 +273,9 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 		break;
 
 	case BL33_IMAGE_ID:
-		/* BL33	expects	to receive the primary CPU MPID	(through r0) */
+		/* BL33 expects to receive the primary CPU MPID	(through r0) */
 		bl_mem_params->ep_info.args.arg0 = 0xffff & read_mpidr();
+		bl_mem_params->ep_info.args.arg1 = mmio_read_32(0x2803EC28);
 		bl_mem_params->ep_info.spsr = ma35h0_get_spsr_for_bl33_entry();
 		break;
 
