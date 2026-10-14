@@ -21,6 +21,11 @@ typedef struct io_block_dev_spec {
 	size_t		block_size;
 } io_block_dev_spec_t;
 
+typedef struct io_offset {
+	long offset;
+	long offset_backup;
+} io_offset_t;
+
 struct io_dev_connector;
 
 int register_io_dev_block(const struct io_dev_connector **dev_con);

@@ -386,6 +386,7 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 	case BL33_IMAGE_ID:
 		/* BL33 expects to receive the primary CPU MPID (through r0) */
 		bl_mem_params->ep_info.args.arg0 = 0xffff & read_mpidr();
+		bl_mem_params->ep_info.args.arg1 = mmio_read_32(0x2803EC28);
 		bl_mem_params->ep_info.spsr = ma35d1_get_spsr_for_bl33_entry();
 		break;
 

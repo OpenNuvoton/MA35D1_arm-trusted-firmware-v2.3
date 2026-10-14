@@ -35,6 +35,9 @@ $(eval $(call add_define,DDR_AUTO_DETECT))
 FIP_DE_AES ?= 0
 $(eval $(call add_define,FIP_DE_AES))
 
+MA35_ANTI_ROLLBACK_AB_BOOT ?= 0
+$(eval $(call add_define,MA35_ANTI_ROLLBACK_AB_BOOT))
+
 MA35D1_PMIC ?= 1
 $(eval $(call add_define,MA35D1_PMIC))
 
@@ -58,6 +61,11 @@ $(eval $(call add_define,MA35D1_CPU_CORE))
 
 MA35D1_SCPBL2_BASE ?= 0x24000000
 $(eval $(call add_define,MA35D1_SCPBL2_BASE))
+
+MA35_BL2_VERSION	?= 0
+MA35_BL31_VERSION	?= 0
+$(eval $(call add_define,MA35_BL2_VERSION))
+$(eval $(call add_define,MA35_BL31_VERSION))
 
 PID_CHECK ?= 0xFFFFFFFF
 $(eval $(call add_define,PID_CHECK))

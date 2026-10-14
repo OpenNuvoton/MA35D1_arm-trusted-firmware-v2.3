@@ -39,7 +39,7 @@
  *     bump can be recorded and MA35D1_BL2_FW_VERSION_COUNT must not
  *     exceed it.
  */
-#define MA35D1_BL2_FW_VERSION_COUNT	0U
+#define MA35D1_BL2_FW_VERSION_COUNT	MA35_BL2_VERSION
 
 void ma35d1_tsi_init(void);
 
@@ -368,6 +368,10 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 			      MA35D1_VERSION_INFO_MAGIC_OFFSET,
 			      MA35D1_VERSION_INFO_MAGIC);
 	}
+#else
+	mmio_write_32(MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_BL2_OTP_OFFSET, 0);
+	mmio_write_32(MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_FIP_OTP_OFFSET, 0);
+	mmio_write_32(MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_LINUX_OTP_OFFSET, 0);
 #endif
 
 	/* version B, PLM = deployed */
@@ -403,6 +407,20 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
 	}
 
 	ma35d1_ddr_init();
+
+	#if MA35_ANTI_ROLLBACK_AB_BOOT
+	mmio_write_32(0x2803EC04, MA35_BL2_VERSION);
+
+	NOTICE("BL2: version %d\n", MA35_BL2_VERSION);
+
+	if (MA35_BL2_VERSION < mmio_read_32(0x2803EC20)) {
+		ERROR("BL2 firmware version rollback detected, halting (version=%d, min=%d)\n",
+			MA35_BL2_VERSION, mmio_read_32(0x2803EC20));
+		panic();
+	}
+
+	mmio_write_32(0x2803EC04, MA35_BL2_VERSION);
+	#endif
 
 	/*
 	 * Initialize Interconnect for this cluster during cold boot.
