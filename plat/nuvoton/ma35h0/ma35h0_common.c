@@ -179,9 +179,12 @@ static void ma35h0_clock_setup(void)
 	mmio_write_32(CLK_APBCLK0, mmio_read_32(CLK_APBCLK0) | (0x1 << 29));
 	if (fdt_read_uint32_default(fdt, node, "rtc-pwrctl-enable", 1) == 1) {
 		uint32_t pwr_off_t;
-		int ret;
+		int ret = -FDT_ERR_NOTFOUND;
 
-		ret = fdt_read_uint32(fdt, node, "rtc-power-off-time", &pwr_off_t);
+		/* Optional property; avoid the missing-property warning */
+		if (fdt_getprop(fdt, node, "rtc-power-off-time", NULL) != NULL)
+			ret = fdt_read_uint32(fdt, node, "rtc-power-off-time",
+					      &pwr_off_t);
 		if (ret == 0 && pwr_off_t >= 4 && pwr_off_t <= 7) {
 			mmio_write_32(0x40410180,
 				      (mmio_read_32(0x40410180) & ~(0x3 << 12)) |
