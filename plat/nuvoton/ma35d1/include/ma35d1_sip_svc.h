@@ -8,6 +8,7 @@
 #define MA35D1_SIP_SVC_H
 
 /* SMC function IDs for SiP Service queries */
+#define SIP_SVC_READ_SRAM		0xC2000006
 #define SIP_SVC_GET_REGISTER		0xC2000007
 #define SIP_SVC_PMIC			0xC2000008
 #define SIP_CPU_CLK			0xC2000009
@@ -26,7 +27,7 @@
 
 /* MA35D1 SiP Service Calls version numbers */
 #define NVT_SIP_SVC_VERSION_MAJOR	0x0
-#define NVT_SIP_SVC_VERSION_MINOR	0x2
+#define NVT_SIP_SVC_VERSION_MINOR	0x3
 
 /* Number of MA35D1 SiP Calls implemented */
 #define NVT_COMMON_SIP_NUM_CALLS	0x3

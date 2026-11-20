@@ -13,6 +13,7 @@
 #include <tools_share/uuid.h>
 
 #include <ma35d1_sip_svc.h>
+#include <ma35d1_version_info.h>
 #include <drivers/nuvoton/ma35d1_pmic.h>
 #include "ma35d1_private.h"
 #include "include/ma35d1_crypto.h"
@@ -261,6 +262,22 @@ uintptr_t sip_smc_handler(uint32_t smc_fid,
 	case SIP_BL2_OFFSET:
 		// INFO("BL2 offset: 0x%x\n", mmio_read_32(0x2803FFF0));
 		SMC_RET1(handle, mmio_read_32(0x2803FFF0));
+
+	case SIP_SVC_READ_SRAM:
+		/* Expose only initialized version-info words to the NS caller. */
+		switch (x1) {
+		case MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_MAGIC_OFFSET:
+		case MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_BL2_IMAGE_OFFSET:
+		case MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_FIP_IMAGE_OFFSET:
+		case MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_BL2_OTP_OFFSET:
+		case MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_FIP_OTP_OFFSET:
+		case MA35D1_VERSION_INFO_BASE + MA35D1_VERSION_INFO_LINUX_OTP_OFFSET:
+			SMC_RET1(handle, mmio_read_32((uintptr_t)x1));
+		default:
+			WARN("SIP_SVC_READ_SRAM - invalid address 0x%lx!\n",
+			     (unsigned long)x1);
+			SMC_RET1(handle, SMC_UNK);
+		}
 
 	case SIP_SVC_GET_REGISTER:
 		if (((uint32_t)x1 < 0x40000000) || ((uint32_t)x1 > 0x50808000)) {
