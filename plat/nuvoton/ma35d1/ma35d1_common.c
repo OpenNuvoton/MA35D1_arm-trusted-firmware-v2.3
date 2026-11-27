@@ -237,6 +237,7 @@ static void ma35d1_clock_setup(void)
 		if ((mmio_read_32(CLK_STATUS) & 0x40) == 0x40)
 			break;
 	}
+
 	/* set CA35 to CA-PLL */
 	mmio_write_32(CLK_CLKSEL0, (mmio_read_32(CLK_CLKSEL0) & ~0x3) | 0x1);
 
@@ -370,6 +371,12 @@ void __init ma35d1_config_setup(void)
 
 	/* Set the PLL */
 	ma35d1_clock_setup();
+
+	/* Enable WDT1/WDT2 reset */
+	mmio_write_32((SYS_BA+0x14), 0x30000);
+
+	/* Enable WDT1 with delay 2s */
+	mmio_write_32(0x40440000, BIT(1)|BIT(7)|(0x6<<8));
 
 	/* get BL2 version */
 	{
@@ -523,9 +530,6 @@ void plat_ma35d1_init(void)
 				    cells[i+1]);
 		}
 	}
-
-	/* enable WDT1/WDT2 reset */
-	mmio_write_32((SYS_BA+0x14), 0x70000);
 
 	/* Let MCU running - Disable M4 Core reset */
 #ifdef MA35D1_LOAD_SCP_BL2

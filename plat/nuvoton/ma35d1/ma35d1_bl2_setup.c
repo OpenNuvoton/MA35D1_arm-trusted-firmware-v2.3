@@ -391,18 +391,23 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 		break;
 
 	case SCP_BL2_IMAGE_ID:
-		/* The subsequent handling of SCP_BL2 is platform specific */
-		err = plat_ma35d1_bl2_handle_scp_bl2(&bl_mem_params->image_info);
-		if (err) {
-			WARN("Failure in platform-specific handling of SCP_BL2 image.\n");
+		if (mmio_read_32(SYS_RSTSTS) & 0x40) {
+			INFO("Load RTP image\n");
+			/* The subsequent handling of SCP_BL2 is platform specific */
+			err = plat_ma35d1_bl2_handle_scp_bl2(&bl_mem_params->image_info);
+			if (err) {
+				WARN("Failure in platform-specific handling of SCP_BL2 image.\n");
+			}
+		} else {
+			INFO("M4 does not require restarting or reloading the image.\n");
 		}
+		mmio_write_32(SYS_RSTSTS, 0x00FFFFFF); /* clear RSTSTS */
 		break;
 
 	default:
 		/* Do nothing in default case */
 		break;
 	}
-
 	return err;
 }
 

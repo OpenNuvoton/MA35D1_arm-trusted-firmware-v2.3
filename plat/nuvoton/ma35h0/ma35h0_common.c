@@ -281,6 +281,12 @@ void __init ma35h0_config_setup(void)
 	/* Set the PLL */
 	ma35h0_clock_setup();
 
+	/* Enable WDT1/WDT2 reset */
+	mmio_write_32((SYS_BA+0x14), 0x30000);
+
+	/* Enable WDT1 with delay 2s */
+	mmio_write_32(0x40440000, BIT(1)|BIT(7)|(0x6<<8));
+
 }
 
 
@@ -400,9 +406,6 @@ void plat_ma35h0_init(void)
 				    cells[i+1]);
 		}
 	}
-
-	/* enable WDT1 reset */
-	mmio_write_32((SYS_BA+0x14), 0x50000);
 
 	/* Let Core1 running */
 	if (SCPBL2_BASE == mmio_read_32(SYS_BA+0x48))
