@@ -277,7 +277,10 @@ void ma35d1_ddr_init(void)
 	mmio_write_32(UMCTL2_BA+0x800, 0x1);
 
 	mmio_write_32(SYS_BA + 0x70,(mmio_read_32(SYS_BA + 0x70) & ~0x00800000));	/* DDR control register clock gating enable */
-	mmio_write_32(CLK_BA + 0x04, 0x35);
+	if (mmio_read_32(SYS_RSTSTS) & 0x40)
+		mmio_write_32(CLK_BA + 0x04, 0x35);	/* close M4 clock */
+	else
+		mmio_write_32(CLK_BA + 0x04, 0x37);	/* M4 keeps running, keep its clock */
 
 	/* restore CLK_SEL0 */
 	mmio_write_32(CLK_BA + 0x18, clk_sel0);

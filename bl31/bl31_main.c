@@ -19,6 +19,7 @@
 #include <lib/el3_runtime/context_mgmt.h>
 #include <lib/pmf/pmf.h>
 #include <lib/runtime_instr.h>
+#include <lib/mmio.h>
 #include <plat/common/platform.h>
 #include <services/std_svc.h>
 
@@ -197,6 +198,10 @@ void __init bl31_prepare_next_image_entry(void)
 	assert(next_image_info != NULL);
 	assert(image_type == GET_SECURITY_STATE(next_image_info->h.attr));
 
+	mmio_write_32(SYS_RLKTZS, 0x59);
+	mmio_write_32(SYS_RLKTZS, 0x16);
+	mmio_write_32(SYS_RLKTZS, 0x88);
+	mmio_write_32(0x40440000, 0);
 	INFO("BL31: Preparing for EL3 exit to %s world\n",
 		(image_type == SECURE) ? "secure" : "normal");
 	print_entry_point_info(next_image_info);

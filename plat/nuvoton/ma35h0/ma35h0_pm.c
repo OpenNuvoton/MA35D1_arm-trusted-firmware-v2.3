@@ -493,8 +493,9 @@ static void __dead2 ma35h0_system_off(void)
 static void __dead2 ma35h0_system_reset(void)
 {
 	ma35h0_UnlockReg();
-	mmio_write_iprst0(0x1);
-	mmio_write_iprst0(0x0);
+
+	/* Reset system with WDT1 */
+	mmio_write_32(0x40440000, BIT(1)|BIT(7));
 
 	while (1)
 		;
